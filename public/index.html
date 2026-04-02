@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Website Wizard</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    input { width: 400px; padding: 8px; }
+    button { padding: 8px 12px; margin-left: 8px; }
+    pre { background: #f4f4f4; padding: 10px; }
+  </style>
+</head>
+<body>
+
+  <h1>Website Wizard 🧙‍♂️</h1>
+
+  <input id="urlInput" placeholder="https://example.com" />
+  <button onclick="audit()">Audit Website</button>
+
+  <h2>Result</h2>
+  <pre id="output">Waiting for audit...</pre>
+
+  <script>
+    async function audit() {
+      const url = document.getElementById("urlInput").value;
+      const output = document.getElementById("output");
+
+      output.textContent = "Running audit...";
+
+      try {
+        const res = await fetch("http://127.0.0.1:8000/audit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
+        });
+
+        const data = await res.json();
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        output.textContent = "Error: " + err.message;
+      }
+    }
+  </script>
+
+</body>
+</html>

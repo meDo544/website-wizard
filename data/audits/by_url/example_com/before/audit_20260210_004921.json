@@ -1,0 +1,97 @@
+{
+  "score": 65,
+  "grade": "D",
+  "summary": "Overall SEO grade: D.",
+  "category_scores": {
+    "on_page": 30,
+    "content": 15,
+    "links": 10,
+    "technical": 10
+  },
+  "category_explanations": {
+    "on_page": "Titles, meta descriptions, and headings.",
+    "content": "Depth, keywords, and quality.",
+    "links": "Internal and external linking.",
+    "technical": "Technical readiness."
+  },
+  "issues": [
+    {
+      "issue": "Title length is not optimal",
+      "priority": "Medium",
+      "fix": {
+        "action": "Adjust title length",
+        "example": "<title>Primary Keyword | Secondary</title>",
+        "why": "Optimal length avoids SERP truncation."
+      }
+    },
+    {
+      "issue": "Missing meta description",
+      "priority": "High",
+      "fix": {
+        "action": "Add meta description",
+        "example": "<meta name=\"description\" content=\"120\u2013160 char summary\">",
+        "why": "Improves CTR from search results."
+      }
+    },
+    {
+      "issue": "Thin content",
+      "priority": "High",
+      "fix": {
+        "action": "Expand content",
+        "example": "Add FAQs, guides, and detailed explanations.",
+        "why": "Search engines reward comprehensive pages."
+      }
+    },
+    {
+      "issue": "No internal links found",
+      "priority": "Medium",
+      "fix": {
+        "action": "Add internal links",
+        "example": "<a href=\"/services\">Our Services</a>",
+        "why": "Improves crawlability and authority flow."
+      }
+    }
+  ],
+  "keywords": [
+    [
+      "domain",
+      3
+    ],
+    [
+      "example",
+      2
+    ],
+    [
+      "use",
+      2
+    ],
+    [
+      "documentation",
+      1
+    ],
+    [
+      "examples",
+      1
+    ],
+    [
+      "without",
+      1
+    ],
+    [
+      "needing",
+      1
+    ],
+    [
+      "permission",
+      1
+    ],
+    [
+      "avoid",
+      1
+    ],
+    [
+      "operations",
+      1
+    ]
+  ]
+}
