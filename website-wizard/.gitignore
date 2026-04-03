@@ -1,18 +1,72 @@
-# Environment variables
+# =========================
+# ENVIRONMENT
+# =========================
 .env
+.env.*
 
-# Python
+# =========================
+# PYTHON
+# =========================
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 
-# Virtual environments
+# =========================
+# VIRTUAL ENVIRONMENTS
+# =========================
 venv/
 .env/
+.venv/
 
-# Docker
+# =========================
+# LOGS
+# =========================
 *.log
 
-# OS
+# =========================
+# OS FILES
+# =========================
 .DS_Store
 Thumbs.db
+
+# =========================
+# WINDOWS SYSTEM DIRECTORIES (CRITICAL FIX)
+# =========================
+AppData/
+Application Data/
+Local Settings/
+Cookies/
+Documents/
+Downloads/
+Desktop/
+Pictures/
+Videos/
+Music/
+NTUSER.*
+ntuser.*
+
+# =========================
+# NODE / FRONTEND (if applicable)
+# =========================
+node_modules/
+.next/
+dist/
+build/
+
+# =========================
+# IDE / EDITOR
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# DOCKER
+# =========================
+*.log
+docker-compose.override.yml
+
+# =========================
+# GIT SAFETY (PREVENT TRACKING OUTSIDE PROJECT)
+# =========================
+../*
