@@ -10,14 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to Server
+      - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: 34.27.91.3
-          username: bangura8591
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
-            cd ~/website-wizard
+            cd website-wizard
             git pull
-            docker compose down
-            docker compose up -d --build
