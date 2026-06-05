@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Website Wizard Dashboard</title>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 40px;
+            background: #f5f5f5;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+
+        input {
+            padding: 10px;
+            width: 300px;
+        }
+
+        .site {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>🚀 Website Wizard Dashboard</h1>
+
+<div>
+    <input id="prompt" placeholder="Enter website idea..." />
+    <button onclick="generate()">Generate</button>
+</div>
+
+<h2>My Sites</h2>
+<div id="sites"></div>
+
+<script>
+const API = "http://34.27.91.3:8002";
+
+// 🔐 PASTE YOUR TOKEN HERE
+const TOKEN = "PASTE_YOUR_TOKEN_HERE";
+
+async function loadSites() {
+    const res = await fetch(`${API}/auth/my-sites`, {
+        headers: {
+            "Authorization": `Bearer ${TOKEN}`
+        }
+    });
+
+    const data = await res.json();
+
+    const container = document.getElementById("sites");
+    container.innerHTML = "";
+
+    data.forEach(site => {
+        const div = document.createElement("div");
+        div.className = "site";
+
+        div.innerHTML = `
+            <b>${site.prompt || "Untitled"}</b><br>
+            <button onclick="preview('${site.id}')">Preview</button>
+        `;
+
+        container.appendChild(div);
+    });
+}
+
+function preview(id) {
+    window.open(`${API}/auth/site/${id}?token=${TOKEN}`, "_blank");
+}
+
+async function generate() {
+    const prompt = document.getElementById("prompt").value;
+
+    const res = await fetch(`${API}/auth/generate-website`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${TOKEN}`
+        },
+        body: JSON.stringify({ prompt })
+    });
+
+    await loadSites();
+}
+
+loadSites();
+</script>
+
+</body>
+</html>

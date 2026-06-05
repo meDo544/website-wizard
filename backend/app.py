@@ -1,14 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 
 # Routers
-from backend.api.auth import router as auth_router
-from backend.api.users import router as users_router
-from backend.api.audit import router as audit_router
+from backend.api import auth
+from backend.api import billing
 
-# Ensure models are registered for Alembic
-from backend.models.user import User  # noqa: F401
-from backend.models import audit  # noqa: F401
+
+# ---------------------------------------------------
+# Environment Detection
+# ---------------------------------------------------
+ENV = os.getenv("ENV", "dev")  # dev | prod
 
 
 # ---------------------------------------------------
@@ -21,28 +24,28 @@ app = FastAPI(
 
 
 # ---------------------------------------------------
-# CORS Middleware (🔥 FIXED + HARDENED)
+# CORS Configuration
 # ---------------------------------------------------
+if ENV == "dev":
+    origins = ["*"]
+else:
+    origins = [
+        "https://buddiirobotics.com",
+        "https://www.buddiirobotics.com",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "*",  # 🔥 DEV MODE (allows Swagger + browser + external calls)
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],  # ✅ important for auth/debug
 )
 
 
 # ---------------------------------------------------
-# Root / Health Endpoints
+# Health Endpoints
 # ---------------------------------------------------
-@app.get("/")
-def root():
-    return {"message": "Website Wizard API is running 🚀"}
-
-
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -53,9 +56,20 @@ def ready():
     return {"status": "ready"}
 
 
+@app.get("/test")
+def test():
+    return {"status": "ok"}
+
+
 # ---------------------------------------------------
-# API Routers
+# API Routers (🔥 MUST COME BEFORE STATIC FILES)
 # ---------------------------------------------------
-app.include_router(auth_router)
-app.include_router(users_router)
-app.include_router(audit_router)
+app.include_router(auth.router)
+app.include_router(billing.router)
+
+
+# ---------------------------------------------------
+# STATIC FILES (🔥 MUST COME LAST)
+# ---------------------------------------------------
+# This serves your frontend dashboard
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

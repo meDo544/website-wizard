@@ -1,0 +1,138 @@
+groups:
+
+  - name: website-wizard-alerts
+
+    rules:
+
+      # -----------------------------------------------------------------------
+      # High API error rate
+      # -----------------------------------------------------------------------
+
+      - alert: HighApiErrorRate
+
+        expr: |
+          sum(rate(website_wizard_http_requests_total{status_code=~"5.."}[5m]))
+          /
+          sum(rate(website_wizard_http_requests_total[5m]))
+          > 0.05
+
+        for: 5m
+
+        labels:
+          severity: critical
+
+        annotations:
+          summary: "High API error rate detected"
+          description: "More than 5% of API requests are failing."
+
+      # -----------------------------------------------------------------------
+      # High p95 latency
+      # -----------------------------------------------------------------------
+
+      - alert: HighApiLatency
+
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(website_wizard_http_request_duration_seconds_bucket[5m]))
+            by (le)
+          ) > 2
+
+        for: 5m
+
+        labels:
+          severity: warning
+
+        annotations:
+          summary: "High API latency"
+          description: "p95 API latency exceeded 2 seconds."
+
+      # -----------------------------------------------------------------------
+      # GPT failure spike
+      # -----------------------------------------------------------------------
+
+      - alert: GptFailureSpike
+
+        expr: |
+          sum(rate(website_wizard_gpt_requests_total{status="failure"}[5m])) > 1
+
+        for: 5m
+
+        labels:
+          severity: critical
+
+        annotations:
+          summary: "GPT failure spike"
+          description: "GPT request failures are elevated."
+
+      # -----------------------------------------------------------------------
+      # Lighthouse timeout spike
+      # -----------------------------------------------------------------------
+
+      - alert: LighthouseTimeoutSpike
+
+        expr: |
+          sum(rate(website_wizard_lighthouse_runs_total{status="timeout"}[5m])) > 0.5
+
+        for: 10m
+
+        labels:
+          severity: warning
+
+        annotations:
+          summary: "Lighthouse timeout spike"
+          description: "Lighthouse timeout rate elevated."
+
+      # -----------------------------------------------------------------------
+      # Celery task failures
+      # -----------------------------------------------------------------------
+
+      - alert: CeleryTaskFailures
+
+        expr: |
+          sum(rate(website_wizard_celery_tasks_total{status="failure"}[5m])) > 1
+
+        for: 5m
+
+        labels:
+          severity: critical
+
+        annotations:
+          summary: "Celery task failures detected"
+          description: "Celery task failures are elevated."
+
+      # -----------------------------------------------------------------------
+      # Audit failure spike
+      # -----------------------------------------------------------------------
+
+      - alert: AuditFailureSpike
+
+        expr: |
+          sum(rate(website_wizard_audits_total{status="failed"}[5m])) > 1
+
+        for: 5m
+
+        labels:
+          severity: critical
+
+        annotations:
+          summary: "Audit failures elevated"
+          description: "Audit failure rate increased."
+
+      # -----------------------------------------------------------------------
+      # Active audit saturation
+      # -----------------------------------------------------------------------
+
+      - alert: AuditSaturation
+
+        expr: |
+          website_wizard_audits_in_progress > 25
+
+        for: 10m
+
+        labels:
+          severity: warning
+
+        annotations:
+          summary: "Audit saturation warning"
+          description: "Too many active audits in progress."

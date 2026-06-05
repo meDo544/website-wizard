@@ -1,51 +1,174 @@
 services:
-  db:
-    image: postgres:16
-    environment:
-      POSTGRES_DB: app
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+  # ---------------------------------------------------------------------------
+  # FastAPI Backend
+  # ---------------------------------------------------------------------------
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: website-wizard-backend
+    restart: unless-stopped
+    command: >
+      uvicorn backend.main:app
+      --host 0.0.0.0
+      --port 8000
+      --workers 1
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+      - prometheus
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./:/app
+      - ./generated_sites:/app/generated_sites
+    networks:
+      - website-wizard-network
+
+  # ---------------------------------------------------------------------------
+  # Celery Worker
+  # ---------------------------------------------------------------------------
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: website-wizard-celery
+    restart: unless-stopped
+    command: >
+      celery -A backend.celery_app.celery_app worker --loglevel=info --concurrency=4
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./:/app
+      - ./generated_sites:/app/generated_sites
+    networks:
+      - website-wizard-network
+
+  # ---------------------------------------------------------------------------
+  # Flower Monitoring
+  # ---------------------------------------------------------------------------
+
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: website-wizard-flower
+    restart: unless-stopped
+    command: >
+      celery -A backend.celery_app.celery_app flower --port=5555
+    env_file:
+      - .env
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - celery
+    networks:
+      - website-wizard-network
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL
+  # ---------------------------------------------------------------------------
+
+  postgres:
+    image: postgres:16
+    container_name: website-wizard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d app"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - website-wizard-network
+
+  # ---------------------------------------------------------------------------
+  # Redis
+  # ---------------------------------------------------------------------------
 
   redis:
     image: redis:7-alpine
+    container_name: website-wizard-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
-    restart: unless-stopped
-
-  api:
-    build: .
-    command: >
-      sh -c "
-      echo '⏳ Running migrations...' &&
-      alembic upgrade head &&
-      echo '🚀 Starting API...' &&
-      uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload
-      "
-    ports:
-      - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql+psycopg://app:${POSTGRES_PASSWORD}@db:5432/app
-      REDIS_URL: redis://redis:6379/0
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      PYTHONPATH: /app
     volumes:
-      - .:/app   # 🔥 CRITICAL for live code sync
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
+      - redis-data:/data
+    command: >
+      redis-server --appendonly yes
+    networks:
+      - website-wizard-network
+
+  # ---------------------------------------------------------------------------
+  # Prometheus
+  # ---------------------------------------------------------------------------
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: website-wizard-prometheus
     restart: unless-stopped
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus-data:/prometheus
+    networks:
+      - website-wizard-network
+
+  # ---------------------------------------------------------------------------
+  # Grafana
+  # ---------------------------------------------------------------------------
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: website-wizard-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - website-wizard-network
+
+# ---------------------------------------------------------------------------
+# Networks
+# ---------------------------------------------------------------------------
+
+networks:
+  website-wizard-network:
+    driver: bridge
+
+# ---------------------------------------------------------------------------
+# Volumes
+# ---------------------------------------------------------------------------
 
 volumes:
-  postgres_data:
+  postgres-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+

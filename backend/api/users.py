@@ -5,7 +5,7 @@ from typing import List
 from backend.core.database import SessionLocal
 from backend.models.user import User
 from backend.schemas.auth import UserOut
-from backend.deps.auth import get_current_user
+from backend.dependencies.auth import get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 

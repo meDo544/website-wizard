@@ -1,60 +1,100 @@
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
-from alembic import context
 
 import os
 import sys
 
-# ---------------------------------------------------
-# Ensure app is importable (Docker + local support)
-# ---------------------------------------------------
+from alembic import context
+
+from sqlalchemy import (
+    engine_from_config,
+    pool,
+)
+
+from dotenv import load_dotenv
+
+# -------------------------------------------------------------------
+# ENSURE PROJECT ROOT IS IMPORTABLE
+# -------------------------------------------------------------------
+
 BASE_DIR = os.path.abspath(os.getcwd())
+
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
 
-# ---------------------------------------------------
-# Alembic Config
-# ---------------------------------------------------
+# -------------------------------------------------------------------
+# LOAD ENVIRONMENT VARIABLES
+# -------------------------------------------------------------------
+
+load_dotenv(override=True)
+
+# -------------------------------------------------------------------
+# ALEMBIC CONFIG
+# -------------------------------------------------------------------
+
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# ---------------------------------------------------
-# Database URL (REQUIRED)
-# ---------------------------------------------------
+# -------------------------------------------------------------------
+# DATABASE URL
+# -------------------------------------------------------------------
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+print("🚨 ALEMBIC DATABASE_URL:", DATABASE_URL)
+
 if not DATABASE_URL:
-    raise RuntimeError("❌ DATABASE_URL is not set")
+    raise RuntimeError(
+        "❌ DATABASE_URL is not set"
+    )
 
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+config.set_main_option(
+    "sqlalchemy.url",
+    DATABASE_URL,
+)
 
-# ---------------------------------------------------
-# Import Base + ALL models (CRITICAL)
-# ---------------------------------------------------
-from backend.core.database import Base
+# -------------------------------------------------------------------
+# IMPORT SQLALCHEMY BASE
+# -------------------------------------------------------------------
 
-# 🔥 IMPORTANT: Import ALL models here so Alembic detects them
-# Add new models to this list as your app grows
-import backend.models  # ✅ loads all models via __init__.py
+from backend.db.session import Base
 
-# Optional pattern (recommended for scaling):
-# import backend.models  # if __init__.py imports all models
+# -------------------------------------------------------------------
+# IMPORT ALL MODELS
+# -------------------------------------------------------------------
+#
+# IMPORTANT:
+# Importing backend.models ensures ALL ORM models are registered
+# with SQLAlchemy metadata for Alembic autogenerate.
+#
+# DO NOT replace this with individual model imports unless required.
+#
+# This avoids stale imports like:
+#
+# backend.models.generated_site
+#
+# after model refactors.
+#
+# -------------------------------------------------------------------
+
+import backend.models
+
+# -------------------------------------------------------------------
+# TARGET METADATA
+# -------------------------------------------------------------------
 
 target_metadata = Base.metadata
 
-# ---------------------------------------------------
-# Optional: Naming conventions (prevents index issues)
-# ---------------------------------------------------
-# If not already defined in Base.metadata, consider:
-# from sqlalchemy import MetaData
-# Base.metadata = MetaData(naming_convention={...})
+# -------------------------------------------------------------------
+# OFFLINE MIGRATIONS
+# -------------------------------------------------------------------
 
-# ---------------------------------------------------
-# Offline migrations
-# ---------------------------------------------------
 def run_migrations_offline():
+    """
+    Run migrations in offline mode.
+    """
+
     context.configure(
         url=DATABASE_URL,
         target_metadata=target_metadata,
@@ -66,18 +106,25 @@ def run_migrations_offline():
     with context.begin_transaction():
         context.run_migrations()
 
+# -------------------------------------------------------------------
+# ONLINE MIGRATIONS
+# -------------------------------------------------------------------
 
-# ---------------------------------------------------
-# Online migrations
-# ---------------------------------------------------
 def run_migrations_online():
+    """
+    Run migrations in online mode.
+    """
+
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
+        config.get_section(
+            config.config_ini_section
+        ),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
     with connectable.connect() as connection:
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
@@ -88,11 +135,14 @@ def run_migrations_online():
         with context.begin_transaction():
             context.run_migrations()
 
+# -------------------------------------------------------------------
+# ENTRYPOINT
+# -------------------------------------------------------------------
 
-# ---------------------------------------------------
-# Entry point
-# ---------------------------------------------------
 if context.is_offline_mode():
+
     run_migrations_offline()
+
 else:
+
     run_migrations_online()

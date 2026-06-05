@@ -1,0 +1,105 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "panels": [
+    {
+      "title": "HTTP Request Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(website_wizard_http_requests_total[5m]))"
+        }
+      ]
+    },
+    {
+      "title": "HTTP Error Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(website_wizard_http_requests_total{status_code=~\"5..\"}[5m]))"
+        }
+      ]
+    },
+    {
+      "title": "Active HTTP Requests",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(website_wizard_http_requests_in_progress)"
+        }
+      ]
+    },
+    {
+      "title": "GPT Request Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(website_wizard_gpt_requests_total[5m]))"
+        }
+      ]
+    },
+    {
+      "title": "GPT Token Usage",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(website_wizard_gpt_tokens_total[5m]))"
+        }
+      ]
+    },
+    {
+      "title": "Lighthouse Duration p95",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(website_wizard_lighthouse_duration_seconds_bucket[5m])) by (le))"
+        }
+      ]
+    },
+    {
+      "title": "Audit Throughput",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(website_wizard_audits_total[5m]))"
+        }
+      ]
+    },
+    {
+      "title": "Active Audits",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "website_wizard_audits_in_progress"
+        }
+      ]
+    },
+    {
+      "title": "Celery Task Failures",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(website_wizard_celery_tasks_total{status=\"failure\"}[5m]))"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [
+    "website-wizard",
+    "observability"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Website Wizard Overview",
+  "version": 1
+}

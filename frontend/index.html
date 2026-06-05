@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Website Wizard</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #f5f5f5;
+    max-width: 900px;
+    margin: auto;
+    padding: 20px;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 6px;
+}
+
+button {
+    padding: 10px;
+    background: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+iframe {
+    width: 100%;
+    height: 400px;
+    border: none;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🚀 Website Wizard</h1>
+
+<!-- LOGIN -->
+<div class="card" id="loginCard">
+    <h2>Login</h2>
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" style="display:none">
+
+    <div class="card">
+        <h2>Generate Website</h2>
+        <input id="prompt" placeholder="Describe your website...">
+        <button onclick="generate()">Generate</button>
+        <iframe id="preview"></iframe>
+    </div>
+
+    <div class="card">
+        <h2>My Sites</h2>
+        <div id="sites"></div>
+    </div>
+
+</div>
+
+<script>
+const API = "http://34.27.91.3:8002";
+
+function getToken() {
+    return localStorage.getItem("token");
+}
+
+// LOGIN
+async function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    const form = new URLSearchParams();
+    form.append("username", email);
+    form.append("password", password);
+
+    const res = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: form
+    });
+
+    const data = await res.json();
+
+    if (data.access_token) {
+        localStorage.setItem("token", data.access_token);
+        showDashboard();
+    } else {
+        alert("Login failed");
+    }
+}
+
+// SHOW DASHBOARD
+function showDashboard() {
+    document.getElementById("loginCard").style.display = "none";
+    document.getElementById("dashboard").style.display = "block";
+    loadSites();
+}
+
+// LOAD SITES
+async function loadSites() {
+    const res = await fetch(`${API}/auth/my-sites`, {
+        headers: {
+            "Authorization": `Bearer ${getToken()}`
+        }
+    });
+
+    const data = await res.json();
+
+    const container = document.getElementById("sites");
+    container.innerHTML = "";
+
+    data.forEach(site => {
+        const div = document.createElement("div");
+
+        div.innerHTML = `
+            <b>${site.prompt || "Untitled"}</b><br>
+            <button onclick="previewSite('${site.id}')">Preview</button>
+            <hr>
+        `;
+
+        container.appendChild(div);
+    });
+}
+
+// GENERATE
+async function generate() {
+    const prompt = document.getElementById("prompt").value;
+
+    const res = await fetch(`${API}/auth/generate-website`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${getToken()}`
+        },
+        body: JSON.stringify({ prompt })
+    });
+
+    const data = await res.json();
+
+    document.getElementById("preview").srcdoc = data.html;
+
+    loadSites();
+}
+
+// PREVIEW IN NEW TAB
+function previewSite(id) {
+    const token = getToken();
+    window.open(`${API}/auth/site/${id}?token=${token}`, "_blank");
+}
+
+// AUTO LOGIN
+if (getToken()) {
+    showDashboard();
+}
+</script>
+
+</body>
+</html>

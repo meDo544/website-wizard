@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Website Wizard</title>
+
+<style>
+:root {
+    --primary: #2563eb;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #1e293b;
+}
+
+body {
+    font-family: "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.card {
+    background: var(--card);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+h1, h2 {
+    color: var(--primary);
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+
+button {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+iframe {
+    width: 100%;
+    height: 500px;
+    border: none;
+}
+
+.error {
+    color: red;
+    margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Website Wizard ✨</h1>
+
+<!-- LOGIN -->
+<div class="card" id="auth-card">
+    <h2>Login</h2>
+
+    <form onsubmit="login(event)">
+        <input id="email" type="email" placeholder="Email" required />
+        <input id="password" type="password" placeholder="Password" required />
+        <button type="submit">Sign In</button>
+    </form>
+
+    <div id="login-status"></div>
+    <div id="login-error" class="error"></div>
+</div>
+
+<!-- GENERATOR -->
+<div class="card" id="gen-card" style="opacity:0.5; pointer-events:none;">
+    <h2>Generate Website</h2>
+
+    <div id="gen-error" class="error"></div>
+
+    <input id="prompt" placeholder="Describe your website..." />
+    <button onclick="generateWebsite()">Generate</button>
+
+    <iframe id="preview-frame"></iframe>
+</div>
+
+<script>
+const API_BASE = "http://34.27.91.3:8002";
+window.token = null;
+
+// UNLOCK UI
+function unlockApp() {
+    document.getElementById("auth-card").style.display = "none";
+
+    const gen = document.getElementById("gen-card");
+    gen.style.opacity = "1";
+    gen.style.pointerEvents = "all";
+}
+
+// LOGIN
+async function login(event) {
+    event.preventDefault();
+
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const errorEl = document.getElementById("login-error");
+    const statusEl = document.getElementById("login-status");
+
+    errorEl.textContent = "";
+    statusEl.textContent = "Logging in...";
+
+    try {
+        const formData = new URLSearchParams();
+        formData.append("username", email);
+        formData.append("password", password);
+
+        const res = await fetch(API_BASE + "/auth/login", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.detail || "Login failed");
+        }
+
+        window.token = data.access_token;
+
+        statusEl.textContent = "Login successful";
+        unlockApp();
+
+        console.log("TOKEN:", window.token);
+
+    } catch (err) {
+        console.error("LOGIN ERROR:", err);
+        statusEl.textContent = "";
+        errorEl.textContent = err.message || "Login error";
+    }
+}
+
+// GENERATE
+async function generateWebsite() {
+    const prompt = document.getElementById("prompt").value.trim();
+    const errorEl = document.getElementById("gen-error");
+
+    errorEl.textContent = "";
+
+    try {
+        const res = await fetch(API_BASE + "/auth/generate-website", {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + window.token,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ prompt })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.detail || "Generation failed");
+        }
+
+        document.getElementById("preview-frame").srcdoc = data.html;
+
+    } catch (err) {
+        console.error("GEN ERROR:", err);
+        errorEl.textContent = err.message || "Generation error";
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,35 +1,119 @@
+# backend/services/lighthouse_runner.py
+
+"""
+Lighthouse runner service.
+
+Provides production-grade Lighthouse observability:
+- Run count
+- Execution duration
+- Active run gauge
+- Timeout/failure/invalid JSON classification
+- Structured logs for incident debugging
+
+URLs are logged, but never used as Prometheus labels.
+"""
+
+from __future__ import annotations
+
 import json
 import subprocess
-import tempfile
-import os
+from typing import Any
 
-def run_lighthouse(url: str) -> dict:
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
-        output_path = tmp.name
+import structlog
 
-    try:
-        cmd = [
-            "lighthouse",
-            url,
-            "--quiet",
-            "--chrome-flags=--headless --no-sandbox --disable-gpu",
-            "--output=json",
-            f"--output-path={output_path}",
-        ]
-        subprocess.run(cmd, check=True)
+from backend.core.metrics import track_lighthouse_duration
 
-        with open(output_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+logger = structlog.get_logger(__name__)
 
-        categories = data.get("categories", {})
-        normalized = {
-            "performance_score": int((categories.get("performance", {}).get("score") or 0) * 100),
-            "seo_score": int((categories.get("seo", {}).get("score") or 0) * 100),
-            "accessibility_score": int((categories.get("accessibility", {}).get("score") or 0) * 100),
-            "best_practices_score": int((categories.get("best-practices", {}).get("score") or 0) * 100),
-            "raw": data,
-        }
-        return normalized
-    finally:
-        if os.path.exists(output_path):
-            os.remove(output_path)
+LIGHTHOUSE_TIMEOUT_SECONDS = 120
+
+
+def run_lighthouse_audit(url: str) -> dict[str, Any]:
+    """
+    Execute Lighthouse for a target URL.
+
+    Args:
+        url: Website URL to audit.
+
+    Returns:
+        Parsed Lighthouse JSON output.
+    """
+    logger.info(
+        "Lighthouse audit started",
+        url=url,
+        timeout_seconds=LIGHTHOUSE_TIMEOUT_SECONDS,
+    )
+
+    with track_lighthouse_duration() as metrics:
+        try:
+            completed = subprocess.run(
+                [
+                    "lighthouse",
+                    url,
+                    "--output=json",
+                    "--quiet",
+                    "--chrome-flags=--headless --no-sandbox",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=LIGHTHOUSE_TIMEOUT_SECONDS,
+            )
+
+            result = json.loads(completed.stdout)
+
+            metrics["status"] = "success"
+
+            logger.info(
+                "Lighthouse audit completed",
+                url=url,
+            )
+
+            return result
+
+        except subprocess.TimeoutExpired as exc:
+            metrics["status"] = "timeout"
+
+            logger.exception(
+                "Lighthouse audit timed out",
+                url=url,
+                timeout_seconds=LIGHTHOUSE_TIMEOUT_SECONDS,
+                failure_type=exc.__class__.__name__,
+            )
+
+            raise
+
+        except subprocess.CalledProcessError as exc:
+            metrics["status"] = "failure"
+
+            logger.exception(
+                "Lighthouse audit process failed",
+                url=url,
+                returncode=exc.returncode,
+                stderr=exc.stderr,
+                failure_type=exc.__class__.__name__,
+            )
+
+            raise
+
+        except json.JSONDecodeError as exc:
+            metrics["status"] = "invalid_json"
+
+            logger.exception(
+                "Lighthouse returned invalid JSON",
+                url=url,
+                failure_type=exc.__class__.__name__,
+            )
+
+            raise
+
+        except Exception as exc:
+            metrics["status"] = "failure"
+
+            logger.exception(
+                "Unexpected Lighthouse failure",
+                url=url,
+                failure_type=exc.__class__.__name__,
+            )
+
+            raise

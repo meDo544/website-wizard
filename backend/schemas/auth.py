@@ -10,11 +10,11 @@ class UserRegister(BaseModel):
 
 class UserOut(BaseModel):
     id: UUID
-    email: EmailStr
-    is_active: bool
-    is_superuser: bool
+    email: str
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = {
+        "from_attributes": True
+    }
 
 
 class TokenPair(BaseModel):

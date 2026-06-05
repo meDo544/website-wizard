@@ -1,1 +1,61 @@
-# --- FastAPI stack ---fastapi==0.128.2starlette==0.50.0uvicorn==0.40.0# --- Database ---sqlalchemy==2.0.29psycopg2-binary==2.9.9alembic==1.13.1psycopg[binary]==3.1.18# --- Auth / Security ---python-jose[cryptography]bcrypt==4.0.1passlib[bcrypt]==1.7.4# --- Environment ---python-dotenv==1.2.1# --- HTTP / Networking ---httpx==0.28.1httpcore==1.0.9requests==2.32.5urllib3==2.6.3certifi==2026.1.4charset-normalizer==3.4.4idna==3.11# --- Pydantic ---pydantic[email]==2.12.5pydantic_core==2.41.5annotated-types==0.7.0typing_extensions==4.15.0typing-inspection==0.4.2# --- Utilities ---anyio==4.12.1h11==0.16.0click==8.3.1tqdm==4.67.3distro==1.9.0colorama==0.4.6sniffio==1.3.1jiter==0.13.0# --- Queue / Workers ---redis==5.0.4# --- HTML parsing ---beautifulsoup4==4.14.3soupsieve==2.8.3# --- OpenAI ---openai==2.17.0# --- Migration ---psycopg[binary]==3.1.18python-multipartemail-validator
+# =========================
+# FastAPI Core
+# =========================
+fastapi==0.128.2
+uvicorn==0.40.0
+
+# =========================
+# Database
+# =========================
+sqlalchemy==2.0.29
+psycopg[binary]==3.1.18
+alembic==1.13.1
+
+# =========================
+# Auth / Security
+# =========================
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2  # 🔥 REQUIRED (fixes your crash)
+
+# =========================
+# Environment
+# =========================
+python-dotenv==1.2.1
+
+# =========================
+# Validation
+# =========================
+pydantic[email]==2.12.5
+email-validator==2.2.0
+
+# =========================
+# API / HTTP
+# =========================
+httpx==0.28.1
+
+# =========================
+# AI
+# =========================
+openai==2.17.0
+
+# =========================
+# Billing
+# =========================
+stripe==15.1.0
+
+# =========================
+# Misc
+# =========================
+python-multipart==0.0.9
+
+# =========================
+# Optional (only if used)
+# =========================
+redis==5.0.4
+beautifulsoup4==4.14.3
+celery[redis]==5.3.6
+prometheus-client==0.20.0
+prometheus-fastapi-instrumentator
+structlog>=24.1.0
+flower>=2.0.1

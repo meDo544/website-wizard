@@ -1,109 +1,145 @@
-import json
-import os
-import logging
-from typing import Dict, Any
+# backend/services/gpt_analyzer.py
 
-from openai import OpenAI
+"""
+GPT analyzer service.
 
-# Initialize client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+Provides production-grade GPT observability:
+- Request count
+- Request latency
+- Active requests
+- Token telemetry
+- Stable model labels
+- Structured logs with audit correlation
 
-logger = logging.getLogger(__name__)
-
-
-def safe_json_loads(content: str) -> Dict[str, Any]:
-    """
-    Safely parse JSON from GPT response.
-    Prevents crashes if model returns invalid JSON.
-    """
-    try:
-        return json.loads(content)
-    except json.JSONDecodeError:
-        logger.error("Invalid JSON from GPT. Raw content: %s", content)
-        return {
-            "summary": "Analysis failed due to formatting error.",
-            "top_issues": [],
-            "quick_wins": [],
-            "strengths": [],
-        }
-
-
-def truncate_data(data: dict, max_length: int = 5000) -> str:
-    """
-    Prevent prompt from becoming too large.
-    """
-    text = json.dumps(data, ensure_ascii=False)
-    return text[:max_length]
-
-
-def analyze_website(
-    url: str,
-    crawl_data: dict,
-    lighthouse_data: dict
-) -> Dict[str, Any]:
-    """
-    Analyze website using GPT with structured output.
-    """
-
-    lighthouse_summary = {
-        "performance_score": lighthouse_data.get("performance_score"),
-        "seo_score": lighthouse_data.get("seo_score"),
-        "accessibility_score": lighthouse_data.get("accessibility_score"),
-        "best_practices_score": lighthouse_data.get("best_practices_score"),
-    }
-
-    prompt = f"""
-You are an expert website auditor.
-
-Analyze this website data and return ONLY valid JSON with this schema:
-{{
-  "summary": "string",
-  "top_issues": [
-    {{
-      "category": "seo|performance|accessibility|ux|content|best_practices",
-      "issue": "string",
-      "severity": "low|medium|high",
-      "recommendation": "string"
-    }}
-  ],
-  "quick_wins": ["string"],
-  "strengths": ["string"]
-}}
-
-Website URL:
-{url}
-
-Crawl Data:
-{truncate_data(crawl_data)}
-
-Lighthouse Data:
-{json.dumps(lighthouse_summary, ensure_ascii=False)}
+Audit IDs and URLs are logged for debugging but never used as Prometheus labels.
 """
 
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            temperature=0.2,
-            messages=[
-                {"role": "system", "content": "Return only valid JSON."},
-                {"role": "user", "content": prompt},
-            ],
-        )
+from __future__ import annotations
 
-        content = response.choices[0].message.content
+from typing import Any
 
-        if not content:
-            raise ValueError("Empty response from GPT")
+import structlog
+from openai import OpenAI
 
-        return safe_json_loads(content)
+from backend.core.config import settings
+from backend.core.metrics import record_gpt_tokens, track_gpt_duration
 
-    except Exception as e:
-        logger.error("GPT analysis failed: %s", str(e))
+logger = structlog.get_logger(__name__)
 
-        # 🔥 Fallback response (prevents API crash)
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+
+def _get_openai_model() -> str:
+    """Return configured OpenAI model with safe fallback."""
+    return getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
+
+
+def _extract_usage(response: Any) -> dict[str, int]:
+    """Extract token usage from OpenAI response safely."""
+    usage = getattr(response, "usage", None)
+
+    if usage is None:
         return {
-            "summary": "Analysis temporarily unavailable.",
-            "top_issues": [],
-            "quick_wins": [],
-            "strengths": [],
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
         }
+
+    return {
+        "prompt_tokens": int(getattr(usage, "prompt_tokens", 0) or 0),
+        "completion_tokens": int(getattr(usage, "completion_tokens", 0) or 0),
+        "total_tokens": int(getattr(usage, "total_tokens", 0) or 0),
+    }
+
+
+def analyze_with_gpt(
+    *,
+    audit_id: str,
+    url: str,
+    lighthouse_result: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Analyze Lighthouse output using GPT.
+
+    Args:
+        audit_id: Audit identifier.
+        url: Audited website URL.
+        lighthouse_result: Parsed Lighthouse JSON result.
+
+    Returns:
+        Structured GPT analysis payload.
+    """
+    model = _get_openai_model()
+
+    logger.info(
+        "GPT analysis started",
+        audit_id=audit_id,
+        url=url,
+        model=model,
+    )
+
+    with track_gpt_duration(model=model) as metrics:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are Website Wizard, a production SaaS website "
+                            "audit analyst. Provide concise, actionable, prioritized "
+                            "recommendations based on Lighthouse data."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Website URL: {url}\n\n"
+                            f"Lighthouse JSON:\n{lighthouse_result}"
+                        ),
+                    },
+                ],
+                temperature=0.2,
+            )
+
+            usage = _extract_usage(response)
+
+            record_gpt_tokens(
+                model=model,
+                prompt_tokens=usage["prompt_tokens"],
+                completion_tokens=usage["completion_tokens"],
+                total_tokens=usage["total_tokens"],
+            )
+
+            content = response.choices[0].message.content or ""
+
+            metrics["status"] = "success"
+
+            logger.info(
+                "GPT analysis completed",
+                audit_id=audit_id,
+                url=url,
+                model=model,
+                prompt_tokens=usage["prompt_tokens"],
+                completion_tokens=usage["completion_tokens"],
+                total_tokens=usage["total_tokens"],
+            )
+
+            return {
+                "model": model,
+                "content": content,
+                "usage": usage,
+            }
+
+        except Exception as exc:
+            metrics["status"] = "failure"
+
+            logger.exception(
+                "GPT analysis failed",
+                audit_id=audit_id,
+                url=url,
+                model=model,
+                failure_type=exc.__class__.__name__,
+            )
+
+            raise

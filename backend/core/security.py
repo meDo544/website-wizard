@@ -1,13 +1,15 @@
 import hashlib
 import secrets
+import os
+
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from jose import jwt
 from passlib.context import CryptContext
 
-SECRET_KEY = "change-me"
-ALGORITHM = "HS256"
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 30
 
@@ -26,17 +28,10 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def create_access_token(subject: str, extra_claims: dict | None = None) -> str:
-    now = datetime.now(timezone.utc)
+def create_access_token(subject: str):
     payload = {
-        "sub": subject,
-        "type": "access",
-        "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)).timestamp()),
-        "jti": str(uuid4()),
+        "sub": subject  # ✅ THIS is the fix
     }
-    if extra_claims:
-        payload.update(extra_claims)
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -48,9 +43,8 @@ def create_refresh_token(subject: str) -> tuple[str, str, datetime]:
     payload = {
         "sub": subject,
         "type": "refresh",
-        "iat": int(now.timestamp()),
-        "exp": int(expires_at.timestamp()),
         "jti": jti,
     }
+
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return token, jti, expires_at

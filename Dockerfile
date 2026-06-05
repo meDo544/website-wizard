@@ -1,76 +1,73 @@
+# ---------------------------------------------------
+# Base Image
+# ---------------------------------------------------
+
 FROM python:3.11-slim
 
-WORKDIR /app
+# ---------------------------------------------------
+# Environment Variables
+# ---------------------------------------------------
 
-# ---------------------------------------------------
-# ENV (important for debugging + logs)
-# ---------------------------------------------------
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # ---------------------------------------------------
-# System dependencies
+# Working Directory
 # ---------------------------------------------------
+
+WORKDIR /app
+
+# ---------------------------------------------------
+# System Dependencies (LEAN)
+# ---------------------------------------------------
+
 RUN apt-get update && apt-get install -y \
     curl \
-    gnupg \
-    ca-certificates \
-    chromium \
-    chromium-driver \
-    fonts-liberation \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libcups2 \
-    libdbus-1-3 \
-    libdrm2 \
-    libgbm1 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libu2f-udev \
-    libvulkan1 \
-    xdg-utils \
     wget \
+    ca-certificates \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------
-# Node + Lighthouse
+# Python Dependencies
 # ---------------------------------------------------
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && npm install -g lighthouse \
-    && rm -rf /var/lib/apt/lists/*
 
-# ---------------------------------------------------
-# Install Python deps FIRST (better caching)
-# ---------------------------------------------------
-COPY requirements.txt /app/requirements.txt
+COPY requirements.txt .
+
+RUN pip install --upgrade pip
+
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ---------------------------------------------------
-# Copy app AFTER deps (important for rebuild correctness)
+# Copy Application
 # ---------------------------------------------------
-COPY . /app
+
+COPY . .
 
 # ---------------------------------------------------
-# Ensure entrypoint is executable
+# Runtime Environment
 # ---------------------------------------------------
-RUN chmod +x /app/backend/scripts/entrypoint.sh
+
+ENV PYTHONPATH=/app
 
 # ---------------------------------------------------
-# DEBUG: show what code is actually inside container
+# Healthcheck
 # ---------------------------------------------------
-RUN echo "===== DEBUG: auth.py inside container =====" \
-    && cat /app/backend/routes/auth.py || true
+
+HEALTHCHECK --interval=30s \
+            --timeout=10s \
+            --start-period=20s \
+            --retries=3 \
+CMD curl --fail http://localhost:8000/health || exit 1
 
 # ---------------------------------------------------
-# Expose port
+# Exposed Port
 # ---------------------------------------------------
+
 EXPOSE 8000
 
 # ---------------------------------------------------
-# Start app
+# Default Startup Command
 # ---------------------------------------------------
-CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

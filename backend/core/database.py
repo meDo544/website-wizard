@@ -1,41 +1,35 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from dotenv import load_dotenv
 import os
 
-# 🔥 Load DATABASE URL
+# Load environment variables from .env
+load_dotenv(override=True)
+
+# =========================================
+# DATABASE CONFIG
+# =========================================
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise Exception("DATABASE_URL is not set")
+    raise RuntimeError("DATABASE_URL is not set")
 
-# 🔥 Create engine
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True  # helps avoid stale connections
+    pool_pre_ping=True,
 )
 
-# 🔥 Session factory
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
-    bind=engine
+    bind=engine,
 )
 
-# 🔥 Base for models
 Base = declarative_base()
 
 
 # =========================================
-# 🔥 CRITICAL FIX: IMPORT ALL MODELS HERE
-# =========================================
-# 👉 This ensures Alembic detects your tables
-from backend.models.user import User
-# 👉 If you have more models, add them here:
-# from backend.audit import Audit
-
-
-# =========================================
-# 🔥 FastAPI DB Dependency
+# FASTAPI DB DEPENDENCY
 # =========================================
 def get_db():
     db = SessionLocal()

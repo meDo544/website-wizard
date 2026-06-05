@@ -4,7 +4,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.core.database import Base
+from backend.db.session import Base
 
 
 class RefreshToken(Base):

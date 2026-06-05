@@ -1,2 +1,155 @@
+# =========================
+# ENVIRONMENT VARIABLES
+# =========================
 .env
-.env
+.env.*
+!.env.example
+frontend/.env.local
+
+# =========================
+# PYTHON
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# =========================
+# VIRTUAL ENVIRONMENTS
+# =========================
+venv/
+.venv/
+env/
+
+# =========================
+# NODE / NEXT.JS
+# =========================
+node_modules/
+.next/
+out/
+dist/
+
+# =========================
+# GENERATED APPLICATION DATA
+# =========================
+generated_sites/
+uploads/
+tmp/
+temp/
+
+# =========================
+# DATABASES
+# =========================
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+# LOGS
+# =========================
+*.log
+logs/
+
+# =========================
+# BACKUPS / TEMP FILES
+# =========================
+*.bak
+*.tmp
+*.save
+*.save.*
+*.swp
+*.swo
+*~
+
+# =========================
+# IDE / EDITOR
+# =========================
+.vscode/
+.idea/
+*.code-workspace
+
+# =========================
+# DOCKER
+# =========================
+docker-compose.override.yml
+
+# =========================
+# OS FILES
+# =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# =========================
+# WINDOWS USER DIRECTORIES
+# (Prevents accidental commits from home folders)
+# =========================
+AppData/
+Application Data/
+Local Settings/
+Cookies/
+Documents/
+Downloads/
+Desktop/
+Pictures/
+Videos/
+Music/
+NTUSER.*
+ntuser.*
+
+# =========================
+# TEST / COVERAGE
+# =========================
+.coverage
+.pytest_cache/
+htmlcov/
+coverage.xml
+
+# =========================
+# CACHES
+# =========================
+.cache/
+.mypy_cache/
+.ruff_cache/
+
+# =========================
+# GIT SAFETY
+# Prevent tracking files outside project root
+
+# =========================
+# Local Next.js root build artifacts
+.next/
+node_modules/
+
+# Local reports
+*.report.html
+
+# Local databases
+wizard.db
+
+# Backup files
+*.save
+*.save.*
+
+# Migration backups
+migration_backup/
+migrations_backup/
+
+# Accidental shell artifacts
+-H
+-d
+resolving
+results:
+transport:
+
+# Archives
+*.tar.gz
+
+# =========================
+../*
+
