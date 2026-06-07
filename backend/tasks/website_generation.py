@@ -5,6 +5,10 @@ from backend.db.session import SessionLocal
 
 from backend.models.generated_sites import GeneratedSite
 
+from backend.services.gpt_website_generator import (
+    generate_business_profile,
+)
+
 from backend.services.website_generator import (
     generate_website,
 )
@@ -50,9 +54,15 @@ def generate_website_task(
         # Generate website HTML
         # ------------------------------------------------
 
-        generated_html = generate_website(
+        profile = generate_business_profile(
             prompt=website.prompt,
-            business_type=business_type,
+            business_type=website.business_type,
+            user_id=str(website.user_id),
+        )
+
+        generated_html = generate_website(
+            profile=profile,
+            business_type=website.business_type,
         )
 
         # ------------------------------------------------

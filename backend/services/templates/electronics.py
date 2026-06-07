@@ -1,36 +1,65 @@
-from backend.services.templates.base import (
-    render_template,
-)
+from backend.services.templates.base import render_template
 
 
-def generate(prompt: str) -> str:
+def generate(profile: dict) -> str:
 
-    content_html = """
-<h2>Featured Electronics</h2>
+    services_html = "".join(
+        [
+            f"""
+            <div class="card">
+                <h3>{service}</h3>
+            </div>
+            """
+            for service in profile.get(
+                "services",
+                [],
+            )
+        ]
+    )
 
-<div class="grid">
+    content_html = f"""
+    <h2>Featured Products</h2>
 
-<div class="card">
-<h3>AI Smart Speaker</h3>
-<p>Voice-controlled smart home assistant.</p>
-</div>
+    <div class="grid">
+        {services_html}
+    </div>
 
-<div class="card">
-<h3>AI Security Camera</h3>
-<p>Facial recognition and smart alerts.</p>
-</div>
+    <section>
+        <h2>About Us</h2>
+        <p>{profile.get("about", "")}</p>
+    </section>
 
-<div class="card">
-<h3>AI Drone</h3>
-<p>Autonomous flight and navigation.</p>
-</div>
-
-</div>
-"""
+    <section>
+        <h2>Shop Now</h2>
+        <p>{profile.get("cta", "")}</p>
+    </section>
+    """
 
     return render_template(
-        title="AI Electronics Shop",
-        tagline="Smart devices for modern living.",
-        prompt=prompt,
+        title=profile.get(
+            "business_name",
+            "Electronics Store",
+        ),
+        tagline=profile.get(
+            "tagline",
+            "",
+        ),
+        hero_title=profile.get(
+            "hero_title",
+            "",
+        ),
+        hero_subtitle=profile.get(
+            "hero_subtitle",
+            "",
+        ),
+        seo_title=profile.get(
+            "seo_title",
+            "",
+        ),
+        seo_description=profile.get(
+            "seo_description",
+            "",
+        ),
         content_html=content_html,
     )
+

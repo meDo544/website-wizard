@@ -1,19 +1,7 @@
-from backend.services.templates.pizza import (
-    generate as pizza_template,
-)
+from backend.services.templates.pizza import generate as pizza_template
+from backend.services.templates.restaurant import generate as restaurant_template
+from backend.services.templates.electronics import generate as electronics_template
 
-from backend.services.templates.restaurant import (
-    generate as restaurant_template,
-)
-
-from backend.services.templates.electronics import (
-    generate as electronics_template,
-)
-
-
-# ------------------------------------------------
-# TEMPLATE REGISTRY
-# ------------------------------------------------
 
 TEMPLATES = {
     "Pizza Shop": pizza_template,
@@ -22,12 +10,9 @@ TEMPLATES = {
 }
 
 
-# ------------------------------------------------
-# WEBSITE GENERATOR
-# ------------------------------------------------
-
 def generate_website(
-    prompt: str,
+    *,
+    profile: dict,
     business_type: str,
 ) -> str:
 
@@ -36,4 +21,4 @@ def generate_website(
         electronics_template,
     )
 
-    return template(prompt)
+    return template(profile)

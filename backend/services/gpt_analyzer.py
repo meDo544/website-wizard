@@ -21,17 +21,21 @@ from typing import Any
 import structlog
 from openai import OpenAI
 
-from backend.core.config import settings
+import os
 from backend.core.metrics import record_gpt_tokens, track_gpt_duration
 
 logger = structlog.get_logger(__name__)
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY")
+)
 
 
 def _get_openai_model() -> str:
-    """Return configured OpenAI model with safe fallback."""
-    return getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
+    return os.getenv(
+        "OPENAI_MODEL",
+        "gpt-4o-mini",
+    )
 
 
 def _extract_usage(response: Any) -> dict[str, int]:

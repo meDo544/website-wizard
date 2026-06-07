@@ -1,37 +1,65 @@
-from backend.services.templates.base import (
-    render_template,
-)
+from backend.services.templates.base import render_template
 
 
-def generate(prompt: str) -> str:
+def generate(profile: dict) -> str:
 
-    content_html = """
-<h2>Featured Pizzas</h2>
+    services_html = "".join(
+        [
+            f"""
+            <div class="card">
+                <h3>{service}</h3>
+            </div>
+            """
+            for service in profile.get(
+                "services",
+                [],
+            )
+        ]
+    )
 
-<div class="grid">
+    content_html = f"""
+    <h2>Featured Pizzas</h2>
 
-<div class="card">
-<h3>Pepperoni Supreme</h3>
-<p>Premium pepperoni and mozzarella.</p>
-</div>
+    <div class="grid">
+        {services_html}
+    </div>
 
-<div class="card">
-<h3>Veggie Delight</h3>
-<p>Fresh vegetables and signature sauce.</p>
-</div>
+    <section>
+        <h2>About Us</h2>
+        <p>{profile.get("about", "")}</p>
+    </section>
 
-<div class="card">
-<h3>AI Special Pizza</h3>
-<p>Recommendations tailored to your taste.</p>
-</div>
-
-</div>
-"""
+    <section>
+        <h2>Get Started</h2>
+        <p>{profile.get("cta", "")}</p>
+    </section>
+    """
 
     return render_template(
-        title="AI Pizza Shop",
-        tagline="Fresh artisan pizzas powered by AI.",
-        prompt=prompt,
+        title=profile.get(
+            "business_name",
+            "Pizza Shop",
+        ),
+        tagline=profile.get(
+            "tagline",
+            "",
+        ),
+        hero_title=profile.get(
+            "hero_title",
+            "",
+        ),
+        hero_subtitle=profile.get(
+            "hero_subtitle",
+            "",
+        ),
+        seo_title=profile.get(
+            "seo_title",
+            "",
+        ),
+        seo_description=profile.get(
+            "seo_description",
+            "",
+        ),
         content_html=content_html,
     )
 
