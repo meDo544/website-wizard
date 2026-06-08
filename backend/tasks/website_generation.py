@@ -9,8 +9,8 @@ from backend.services.gpt_website_generator import (
     generate_business_profile,
 )
 
-from backend.services.website_generator import (
-    generate_website,
+from backend.services.multi_page_generator import (
+    generate_multi_page_site,
 )
 
 
@@ -72,12 +72,11 @@ def generate_website_task(
         )
 
         # ------------------------------------------------
-        # Generate themed website
+        # Generate multi-page website
         # ------------------------------------------------
 
-        generated_html = generate_website(
+        pages = generate_multi_page_site(
             profile=profile,
-            business_type=website.business_type,
             theme=theme,
         )
 
@@ -88,6 +87,7 @@ def generate_website_task(
         website.metadata_json = {
             "theme": theme,
             "profile": profile,
+            "pages": list(pages.keys()),
         }
 
         # ------------------------------------------------
@@ -108,24 +108,22 @@ def generate_website_task(
         )
 
         # ------------------------------------------------
-        # Define index path
+        # Write all generated pages
         # ------------------------------------------------
 
-        index_path = os.path.join(
-            output_dir,
-            "index.html",
-        )
+        for filename, html_content in pages.items():
 
-        # ------------------------------------------------
-        # Write generated website
-        # ------------------------------------------------
+            file_path = os.path.join(
+                output_dir,
+                filename,
+            )
 
-        with open(
-            index_path,
-            "w",
-            encoding="utf-8",
-        ) as f:
-            f.write(generated_html)
+            with open(
+                file_path,
+                "w",
+                encoding="utf-8",
+            ) as f:
+                f.write(html_content)
 
         # ------------------------------------------------
         # Save generated output
@@ -136,7 +134,10 @@ def generate_website_task(
             {},
         )
 
-        website.html = generated_html
+        website.html = pages.get(
+            "index.html",
+            "",
+        )
 
         website.css = ""
 

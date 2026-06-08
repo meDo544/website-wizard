@@ -75,6 +75,29 @@ body {{
     color: {theme_config["text_color"]};
 }}
 
+nav {{
+    background: {theme_config["header_bg"]};
+    padding: 15px 30px;
+}}
+
+nav ul {{
+    list-style: none;
+    display: flex;
+    gap: 25px;
+    margin: 0;
+    padding: 0;
+}}
+
+nav a {{
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+}}
+
+nav a:hover {{
+    text-decoration: underline;
+}}
+
 header {{
     background: {theme_config["header_bg"]};
     color: white;
@@ -133,6 +156,26 @@ section {{
 </head>
 
 <body>
+
+<nav>
+    <ul>
+        <li>
+            <a href="index.html">Home</a>
+        </li>
+
+        <li>
+            <a href="about.html">About</a>
+        </li>
+
+        <li>
+            <a href="services.html">Services</a>
+        </li>
+
+        <li>
+            <a href="contact.html">Contact</a>
+        </li>
+    </ul>
+</nav>
 
 <header>
 
