@@ -4,9 +4,14 @@ from sqlalchemy.orm import Session
 from backend.db.session import get_db
 from backend.models.generated_sites import GeneratedSite
 from backend.models.user import User
-from backend.schemas.website import WebsiteCreate, WebsiteResponse
+from backend.schemas.website import (
+    WebsiteCreate,
+    WebsiteResponse,
+)
 from backend.dependencies.auth import get_current_user
-from backend.tasks.website_generation import generate_website_task
+from backend.tasks.website_generation import (
+    generate_website_task,
+)
 
 
 router = APIRouter(
@@ -27,10 +32,17 @@ async def generate_website(
         business_type=website_data.business_type,
         prompt=website_data.prompt,
         generation_status="queued",
+
+        # Phase 2B Theme Support
+        metadata_json={
+            "theme": website_data.theme,
+        },
     )
 
     db.add(website)
+
     db.commit()
+
     db.refresh(website)
 
     generate_website_task.delay(
@@ -69,6 +81,13 @@ async def get_website_status(
             detail="Website not found",
         )
 
+    # Expose theme from metadata_json
+    if website.metadata_json:
+        website.theme = website.metadata_json.get(
+            "theme",
+            "modern",
+        )
+
     return website
 
 
@@ -90,6 +109,14 @@ async def list_websites(
         )
         .all()
     )
+
+    for website in websites:
+
+        if website.metadata_json:
+            website.theme = website.metadata_json.get(
+                "theme",
+                "modern",
+            )
 
     return websites
 

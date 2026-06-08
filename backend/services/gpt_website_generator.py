@@ -81,22 +81,79 @@ def generate_business_profile(
             system_prompt = """
 You are Website Wizard.
 
-Generate website content for a small business.
+Generate rich website content for a small business.
 
 Return ONLY valid JSON.
+
+Return realistic, business-specific content.
+
+Generate at least:
+- 3 services
+- 3 features
+- 3 testimonials
+- 3 FAQs
+
+Use this exact JSON structure:
 
 {
   "business_name": "",
   "tagline": "",
+
   "hero_title": "",
   "hero_subtitle": "",
+
   "about": "",
+
   "services": [
     "",
     "",
     ""
   ],
+
+  "features": [
+    "",
+    "",
+    ""
+  ],
+
+  "testimonials": [
+    {
+      "name": "",
+      "quote": ""
+    },
+    {
+      "name": "",
+      "quote": ""
+    },
+    {
+      "name": "",
+      "quote": ""
+    }
+  ],
+
+  "faqs": [
+    {
+      "question": "",
+      "answer": ""
+    },
+    {
+      "question": "",
+      "answer": ""
+    },
+    {
+      "question": "",
+      "answer": ""
+    }
+  ],
+
+  "contact": {
+    "phone": "",
+    "email": "",
+    "address": ""
+  },
+
   "cta": "",
+
   "seo_title": "",
   "seo_description": ""
 }
@@ -166,3 +223,4 @@ Return ONLY valid JSON.
             )
 
             raise
+

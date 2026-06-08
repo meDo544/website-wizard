@@ -1,6 +1,34 @@
 import html
 
 
+THEMES = {
+    "modern": {
+        "header_bg": "#2563eb",
+        "body_bg": "#f8fafc",
+        "text_color": "#1f2937",
+        "card_bg": "#ffffff",
+    },
+    "dark": {
+        "header_bg": "#111827",
+        "body_bg": "#030712",
+        "text_color": "#f9fafb",
+        "card_bg": "#1f2937",
+    },
+    "luxury": {
+        "header_bg": "#111111",
+        "body_bg": "#faf7f2",
+        "text_color": "#1f1f1f",
+        "card_bg": "#ffffff",
+    },
+    "startup": {
+        "header_bg": "#7c3aed",
+        "body_bg": "#f5f3ff",
+        "text_color": "#111827",
+        "card_bg": "#ffffff",
+    },
+}
+
+
 def render_template(
     *,
     title: str,
@@ -10,7 +38,13 @@ def render_template(
     seo_title: str,
     seo_description: str,
     content_html: str,
+    theme: str = "modern",
 ) -> str:
+
+    theme_config = THEMES.get(
+        theme,
+        THEMES["modern"],
+    )
 
     return f"""
 <!DOCTYPE html>
@@ -37,12 +71,12 @@ def render_template(
 body {{
     font-family: Arial, sans-serif;
     margin: 0;
-    background: #f8fafc;
-    color: #1f2937;
+    background: {theme_config["body_bg"]};
+    color: {theme_config["text_color"]};
 }}
 
 header {{
-    background: #2563eb;
+    background: {theme_config["header_bg"]};
     color: white;
     padding: 80px 40px;
     text-align: center;
@@ -75,7 +109,7 @@ main {{
 }}
 
 .card {{
-    background: white;
+    background: {theme_config["card_bg"]};
     padding: 24px;
     border-radius: 12px;
     box-shadow:
@@ -87,7 +121,7 @@ section {{
 }}
 
 .cta {{
-    background: #2563eb;
+    background: {theme_config["header_bg"]};
     color: white;
     padding: 30px;
     border-radius: 12px;
@@ -102,7 +136,9 @@ section {{
 
 <header>
 
-<h1>{html.escape(hero_title)}</h1>
+<h1 class="hero-title">
+{html.escape(hero_title)}
+</h1>
 
 <p class="hero-subtitle">
 {html.escape(hero_subtitle)}

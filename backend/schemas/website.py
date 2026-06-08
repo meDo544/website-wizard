@@ -10,20 +10,34 @@ class WebsiteCreate(BaseModel):
     business_type: str
     prompt: str
 
+    # Phase 2B
+    theme: str = "modern"
+
 
 class WebsiteResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+
     user_id: Optional[UUID] = None
+
     project_name: Optional[str] = None
     business_type: Optional[str] = None
+
+    # Phase 2B
+    theme: Optional[str] = None
+
     prompt: str
+
     html: Optional[str] = None
     css: Optional[str] = None
     js: Optional[str] = None
+
     generated_url: Optional[str] = None
+
     generation_status: str
     error_message: Optional[str] = None
+
     created_at: datetime
     updated_at: datetime
+
