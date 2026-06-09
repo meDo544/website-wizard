@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from backend.services.templates.base import render_template
+from backend.services.landing_page_generator import (
+    generate_landing_page_content,
+)
 
 
 def _cards(
@@ -16,22 +19,6 @@ def _cards(
             </div>
             """
             for item in items
-        ]
-    )
-
-
-def _testimonial_cards(
-    testimonials: list,
-) -> str:
-    return "".join(
-        [
-            f"""
-            <div class="card">
-                <strong>{item.get("name", "")}</strong>
-                <p>{item.get("quote", "")}</p>
-            </div>
-            """
-            for item in testimonials
         ]
     )
 
@@ -58,57 +45,9 @@ def generate_home_page(
     theme: str = "modern",
 ) -> str:
 
-    services_html = _cards(
-        profile.get(
-            "services",
-            [],
-        )
+    content_html = generate_landing_page_content(
+        profile=profile,
     )
-
-    features_html = _cards(
-        profile.get(
-            "features",
-            [],
-        )
-    )
-
-    testimonials_html = _testimonial_cards(
-        profile.get(
-            "testimonials",
-            [],
-        )
-    )
-
-    content_html = f"""
-    <section>
-        <h2>Services</h2>
-
-        <div class="grid">
-            {services_html}
-        </div>
-    </section>
-
-    <section>
-        <h2>Why Choose Us</h2>
-
-        <div class="grid">
-            {features_html}
-        </div>
-    </section>
-
-    <section>
-        <h2>What Our Customers Say</h2>
-
-        <div class="grid">
-            {testimonials_html}
-        </div>
-    </section>
-
-    <section class="cta">
-        <h2>Get Started</h2>
-        <p>{profile.get("cta", "")}</p>
-    </section>
-    """
 
     return render_template(
         title=profile.get(
@@ -150,6 +89,11 @@ def generate_about_page(
     theme: str = "modern",
 ) -> str:
 
+    about_text = profile.get(
+        "about",
+        "",
+    )
+
     features_html = _cards(
         profile.get(
             "features",
@@ -159,12 +103,12 @@ def generate_about_page(
 
     content_html = f"""
     <section>
-        <h2>About Us</h2>
-        <p>{profile.get("about", "")}</p>
+        <h2>Our Story</h2>
+        <p>{about_text}</p>
     </section>
 
     <section>
-        <h2>What Makes Us Different</h2>
+        <h2>Why Choose Us</h2>
 
         <div class="grid">
             {features_html}
@@ -182,10 +126,7 @@ def generate_about_page(
             "",
         ),
         hero_title="About Us",
-        hero_subtitle=profile.get(
-            "about",
-            "",
-        ),
+        hero_subtitle=about_text,
         seo_title=f"About {profile.get('business_name', 'Us')}",
         seo_description=profile.get(
             "seo_description",
