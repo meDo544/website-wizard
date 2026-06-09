@@ -20,6 +20,15 @@ client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY")
 )
 
+DEFAULT_SECTION_ORDER = [
+    "services",
+    "features",
+    "testimonials",
+    "faqs",
+    "contact",
+    "cta",
+]
+
 
 def _get_openai_model() -> str:
     return os.getenv(
@@ -52,6 +61,30 @@ def _extract_usage(response: Any) -> dict[str, int]:
     }
 
 
+def _normalize_section_order(
+    profile: dict[str, Any],
+) -> None:
+    section_order = profile.get(
+        "section_order",
+        DEFAULT_SECTION_ORDER,
+    )
+
+    if not isinstance(section_order, list):
+        profile["section_order"] = DEFAULT_SECTION_ORDER
+        return
+
+    normalized_order = [
+        section
+        for section in section_order
+        if section in DEFAULT_SECTION_ORDER
+    ]
+
+    profile["section_order"] = (
+        normalized_order
+        or DEFAULT_SECTION_ORDER
+    )
+
+
 def generate_business_profile(
     *,
     prompt: str,
@@ -81,7 +114,7 @@ def generate_business_profile(
             system_prompt = """
 You are Website Wizard.
 
-Generate rich website content and branding for a small business.
+Generate rich website content, branding, and landing page structure for a small business.
 
 Return ONLY valid JSON.
 
@@ -98,6 +131,20 @@ Also generate a brand identity:
 - secondary color as a hex code
 - font family suggestion
 - logo text
+
+Also generate a conversion-focused landing page section order.
+
+Available section_order values:
+- services
+- features
+- testimonials
+- faqs
+- contact
+- cta
+
+section_order must be an array.
+Use only the available section_order values.
+Choose the best order for the business type and customer intent.
 
 Use this exact JSON structure:
 
@@ -167,6 +214,15 @@ Use this exact JSON structure:
 
   "cta": "",
 
+  "section_order": [
+    "services",
+    "features",
+    "testimonials",
+    "faqs",
+    "contact",
+    "cta"
+  ],
+
   "seo_title": "",
   "seo_description": ""
 }
@@ -209,6 +265,7 @@ Use this exact JSON structure:
             )
 
             profile = json.loads(content)
+
             branding = profile.get(
                 "branding",
                 {},
@@ -220,6 +277,10 @@ Use this exact JSON structure:
                 )
 
             profile["branding"] = branding
+
+            _normalize_section_order(
+                profile
+            )
 
             metrics["status"] = "success"
 
