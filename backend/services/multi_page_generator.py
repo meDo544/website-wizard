@@ -137,6 +137,10 @@ def generate_home_page(
         ),
         content_html=content_html,
         theme=theme,
+        branding=profile.get(
+            "branding",
+            {},
+        ),
     )
 
 
@@ -189,6 +193,10 @@ def generate_about_page(
         ),
         content_html=content_html,
         theme=theme,
+        branding=profile.get(
+            "branding",
+            {},
+        ),
     )
 
 
@@ -251,6 +259,10 @@ def generate_services_page(
         ),
         content_html=content_html,
         theme=theme,
+        branding=profile.get(
+            "branding",
+            {},
+        ),
     )
 
 
@@ -309,6 +321,10 @@ def generate_contact_page(
         ),
         content_html=content_html,
         theme=theme,
+        branding=profile.get(
+            "branding",
+            {},
+        ),
     )
 
 

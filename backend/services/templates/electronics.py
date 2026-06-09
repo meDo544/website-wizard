@@ -159,5 +159,9 @@ def generate(
         ),
         content_html=content_html,
         theme=theme,
+        branding=profile.get(
+            "branding",
+            {},
+        ),
     )
 

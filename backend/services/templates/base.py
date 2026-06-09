@@ -39,11 +39,34 @@ def render_template(
     seo_description: str,
     content_html: str,
     theme: str = "modern",
+    branding: dict | None = None,
 ) -> str:
+
+    branding = branding or {}
 
     theme_config = THEMES.get(
         theme,
         THEMES["modern"],
+    )
+
+    primary_color = branding.get(
+        "primary_color",
+        theme_config["header_bg"],
+    )
+
+    secondary_color = branding.get(
+        "secondary_color",
+        theme_config["card_bg"],
+    )
+
+    font_family = branding.get(
+        "font_family",
+        "Arial, sans-serif",
+    )
+
+    logo_text = branding.get(
+        "logo_text",
+        title,
     )
 
     return f"""
@@ -69,15 +92,22 @@ def render_template(
 <style>
 
 body {{
-    font-family: Arial, sans-serif;
+    font-family: {font_family};
     margin: 0;
     background: {theme_config["body_bg"]};
     color: {theme_config["text_color"]};
 }}
 
 nav {{
-    background: {theme_config["header_bg"]};
+    background: {primary_color};
     padding: 15px 30px;
+}}
+
+.logo {{
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 12px;
 }}
 
 nav ul {{
@@ -99,7 +129,7 @@ nav a:hover {{
 }}
 
 header {{
-    background: {theme_config["header_bg"]};
+    background: {primary_color};
     color: white;
     padding: 80px 40px;
     text-align: center;
@@ -132,7 +162,7 @@ main {{
 }}
 
 .card {{
-    background: {theme_config["card_bg"]};
+    background: {secondary_color};
     padding: 24px;
     border-radius: 12px;
     box-shadow:
@@ -144,7 +174,7 @@ section {{
 }}
 
 .cta {{
-    background: {theme_config["header_bg"]};
+    background: {primary_color};
     color: white;
     padding: 30px;
     border-radius: 12px;
@@ -158,23 +188,18 @@ section {{
 <body>
 
 <nav>
+
+    <div class="logo">
+        {html.escape(logo_text)}
+    </div>
+
     <ul>
-        <li>
-            <a href="index.html">Home</a>
-        </li>
-
-        <li>
-            <a href="about.html">About</a>
-        </li>
-
-        <li>
-            <a href="services.html">Services</a>
-        </li>
-
-        <li>
-            <a href="contact.html">Contact</a>
-        </li>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="services.html">Services</a></li>
+        <li><a href="contact.html">Contact</a></li>
     </ul>
+
 </nav>
 
 <header>

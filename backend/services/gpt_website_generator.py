@@ -81,7 +81,7 @@ def generate_business_profile(
             system_prompt = """
 You are Website Wizard.
 
-Generate rich website content for a small business.
+Generate rich website content and branding for a small business.
 
 Return ONLY valid JSON.
 
@@ -93,9 +93,22 @@ Generate at least:
 - 3 testimonials
 - 3 FAQs
 
+Also generate a brand identity:
+- primary color as a hex code
+- secondary color as a hex code
+- font family suggestion
+- logo text
+
 Use this exact JSON structure:
 
 {
+  "branding": {
+    "primary_color": "",
+    "secondary_color": "",
+    "font_family": "",
+    "logo_text": ""
+  },
+
   "business_name": "",
   "tagline": "",
 
@@ -196,6 +209,17 @@ Use this exact JSON structure:
             )
 
             profile = json.loads(content)
+            branding = profile.get(
+                "branding",
+                {},
+            )
+
+            if "logo_text\n" in branding:
+                branding["logo_text"] = branding.pop(
+                    "logo_text\n"
+                )
+
+            profile["branding"] = branding
 
             metrics["status"] = "success"
 
