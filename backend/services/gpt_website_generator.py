@@ -29,6 +29,15 @@ DEFAULT_SECTION_ORDER = [
     "cta",
 ]
 
+VALID_CONVERSION_STRATEGIES = {
+    "restaurant",
+    "saas",
+    "consultant",
+    "contractor",
+    "agency",
+    "medical",
+    "general",
+}
 
 def _get_openai_model() -> str:
     return os.getenv(
@@ -84,6 +93,21 @@ def _normalize_section_order(
         or DEFAULT_SECTION_ORDER
     )
 
+def _normalize_conversion_strategy(
+    profile: dict[str, Any],
+) -> None:
+
+    strategy = str(
+        profile.get(
+            "conversion_strategy",
+            "general",
+        )
+    ).lower()
+
+    if strategy not in VALID_CONVERSION_STRATEGIES:
+        strategy = "general"
+
+    profile["conversion_strategy"] = strategy
 
 def generate_business_profile(
     *,
@@ -143,8 +167,45 @@ Available section_order values:
 - cta
 
 section_order must be an array.
-Use only the available section_order values.
-Choose the best order for the business type and customer intent.
+
+Also generate:
+
+"conversion_strategy"
+
+Valid values:
+
+- restaurant
+- saas
+- consultant
+- contractor
+- agency
+- medical
+- general
+
+Choose the highest-converting layout based on business type.
+
+Examples:
+
+Restaurant:
+services → testimonials → features → contact → cta
+
+SaaS:
+features → services → testimonials → faqs → cta → contact
+
+Consultant:
+features → testimonials → services → cta → contact
+
+Contractor:
+services → testimonials → faqs → contact → cta
+
+Agency:
+features → services → testimonials → faqs → cta → contact
+
+Medical:
+services → features → testimonials → faqs → contact → cta
+
+Do not blindly copy examples.
+Choose the best conversion strategy for the business.
 
 Use this exact JSON structure:
 
@@ -214,6 +275,8 @@ Use this exact JSON structure:
 
   "cta": "",
 
+  "conversion_strategy": "general",
+
   "section_order": [
     "services",
     "features",
@@ -282,6 +345,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_conversion_strategy(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -289,6 +356,12 @@ Use this exact JSON structure:
                 business_type=business_type,
                 model=model,
                 total_tokens=usage["total_tokens"],
+                conversion_strategy=profile.get(
+                    "conversion_strategy",
+                ),
+                section_order=profile.get(
+                    "section_order",
+                ),
             )
 
             profile["_usage"] = usage
