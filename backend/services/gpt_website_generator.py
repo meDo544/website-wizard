@@ -48,6 +48,16 @@ VALID_HERO_TYPES = {
     "general",
 }
 
+HERO_STRATEGY_MAP = {
+    "restaurant": ["luxury", "benefit", "local", "authority", "urgency", "general"],
+    "saas": ["benefit", "authority", "urgency", "general"],
+    "consultant": ["authority", "benefit", "local", "general"],
+    "contractor": ["local", "authority", "benefit", "urgency", "general"],
+    "agency": ["authority", "benefit", "urgency", "general"],
+    "medical": ["authority", "local", "benefit", "general"],
+    "general": ["benefit", "authority", "general", "urgency"],
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -159,31 +169,56 @@ def _normalize_hero_variants(
 def _apply_selected_hero(
     profile: dict[str, Any],
 ) -> None:
-    selected_type = str(
-        profile.get("selected_hero_type", "general")
+    conversion_strategy = str(
+        profile.get(
+            "conversion_strategy",
+            "general",
+        )
     ).lower()
 
-    variants = profile.get("hero_variants", [])
-
-    selected_variant = next(
-        (
-            variant
-            for variant in variants
-            if variant.get("type") == selected_type
-        ),
-        None,
+    preferred_hero_types = HERO_STRATEGY_MAP.get(
+        conversion_strategy,
+        HERO_STRATEGY_MAP["general"],
     )
+
+    variants = profile.get(
+        "hero_variants",
+        [],
+    )
+
+    selected_variant = None
+    selected_type = "general"
+
+    for hero_type in preferred_hero_types:
+        selected_variant = next(
+            (
+                variant
+                for variant in variants
+                if variant.get("type") == hero_type
+            ),
+            None,
+        )
+
+        if selected_variant:
+            selected_type = hero_type
+            break
 
     if selected_variant is None and variants:
         selected_variant = variants[0]
-        selected_type = selected_variant.get("type", "general")
+        selected_type = selected_variant.get(
+            "type",
+            "general",
+        )
 
     if selected_variant:
         profile["hero_title"] = selected_variant["title"]
         profile["hero_subtitle"] = selected_variant["subtitle"]
         profile["selected_hero_type"] = selected_type
     else:
-        profile.setdefault("selected_hero_type", "general")
+        profile.setdefault(
+            "selected_hero_type",
+            "general",
+        )
 
 def generate_business_profile(
     *,
