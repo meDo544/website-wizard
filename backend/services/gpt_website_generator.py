@@ -39,12 +39,20 @@ VALID_CONVERSION_STRATEGIES = {
     "general",
 }
 
+VALID_HERO_TYPES = {
+    "benefit",
+    "authority",
+    "urgency",
+    "luxury",
+    "local",
+    "general",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
         "gpt-4.1-mini",
     )
-
 
 def _extract_usage(response: Any) -> dict[str, int]:
 
@@ -68,7 +76,6 @@ def _extract_usage(response: Any) -> dict[str, int]:
             getattr(usage, "total_tokens", 0) or 0
         ),
     }
-
 
 def _normalize_section_order(
     profile: dict[str, Any],
@@ -108,6 +115,75 @@ def _normalize_conversion_strategy(
         strategy = "general"
 
     profile["conversion_strategy"] = strategy
+
+def _normalize_hero_variants(
+    profile: dict[str, Any],
+) -> None:
+    variants = profile.get("hero_variants", [])
+
+    if not isinstance(variants, list):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+
+        hero_type = str(
+            variant.get("type", "general")
+        ).lower()
+
+        if hero_type not in VALID_HERO_TYPES:
+            hero_type = "general"
+
+        title = str(
+            variant.get("title", "")
+        ).strip()
+
+        subtitle = str(
+            variant.get("subtitle", "")
+        ).strip()
+
+        if title and subtitle:
+            normalized_variants.append(
+                {
+                    "type": hero_type,
+                    "title": title,
+                    "subtitle": subtitle,
+                }
+            )
+
+    profile["hero_variants"] = normalized_variants
+
+def _apply_selected_hero(
+    profile: dict[str, Any],
+) -> None:
+    selected_type = str(
+        profile.get("selected_hero_type", "general")
+    ).lower()
+
+    variants = profile.get("hero_variants", [])
+
+    selected_variant = next(
+        (
+            variant
+            for variant in variants
+            if variant.get("type") == selected_type
+        ),
+        None,
+    )
+
+    if selected_variant is None and variants:
+        selected_variant = variants[0]
+        selected_type = selected_variant.get("type", "general")
+
+    if selected_variant:
+        profile["hero_title"] = selected_variant["title"]
+        profile["hero_subtitle"] = selected_variant["subtitle"]
+        profile["selected_hero_type"] = selected_type
+    else:
+        profile.setdefault("selected_hero_type", "general")
 
 def generate_business_profile(
     *,
@@ -207,6 +283,33 @@ services → features → testimonials → faqs → contact → cta
 Do not blindly copy examples.
 Choose the best conversion strategy for the business.
 
+Also generate hero_variants.
+
+Generate at least 3 hero variants.
+
+Valid hero types:
+
+- benefit
+- authority
+- urgency
+- luxury
+- local
+- general
+
+Each hero variant must contain:
+
+{
+  "type": "",
+  "title": "",
+  "subtitle": ""
+}
+
+Also generate:
+
+selected_hero_type
+
+Choose the hero most likely to convert for the business.
+
 Use this exact JSON structure:
 
 {
@@ -219,6 +322,26 @@ Use this exact JSON structure:
 
   "business_name": "",
   "tagline": "",
+
+  "hero_variants": [
+    {
+      "type": "benefit",
+      "title": "",
+      "subtitle": ""
+    },
+    {
+      "type": "authority",
+      "title": "",
+      "subtitle": ""
+    },
+    {
+      "type": "urgency",
+      "title": "",
+      "subtitle": ""
+    }
+  ],
+
+  "selected_hero_type": "benefit",
 
   "hero_title": "",
   "hero_subtitle": "",
@@ -349,6 +472,14 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_hero_variants(
+                profile
+            )
+
+            _apply_selected_hero(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -361,6 +492,9 @@ Use this exact JSON structure:
                 ),
                 section_order=profile.get(
                     "section_order",
+                ),
+                selected_hero_type=profile.get(
+                    "selected_hero_type",
                 ),
             )
 
@@ -381,4 +515,3 @@ Use this exact JSON structure:
             )
 
             raise
-
