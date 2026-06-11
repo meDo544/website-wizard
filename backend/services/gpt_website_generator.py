@@ -58,6 +58,43 @@ HERO_STRATEGY_MAP = {
     "general": ["benefit", "authority", "general", "urgency"],
 }
 
+CTA_STRATEGY_MAP = {
+    "restaurant": ["booking", "purchase"],
+    "saas": ["demo", "trial"],
+    "consultant": ["consultation", "booking"],
+    "contractor": ["quote", "booking"],
+    "agency": ["consultation", "quote"],
+    "medical": ["appointment", "booking"],
+    "general": ["booking"],
+}
+
+CTA_FALLBACK_ORDER = [
+    "booking",
+    "consultation",
+    "quote",
+    "demo",
+    "trial",
+    "purchase",
+    "appointment",
+    "general",
+]
+
+CTA_TYPE_ALIASES = {
+    "book": "booking",
+    "reservation": "booking",
+    "reserve": "booking",
+    "call": "consultation",
+    "consult": "consultation",
+    "estimate": "quote",
+    "pricing": "quote",
+    "buy": "purchase",
+    "order": "purchase",
+    "signup": "trial",
+    "sign_up": "trial",
+    "free_trial": "trial",
+    "schedule": "appointment",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -166,6 +203,52 @@ def _normalize_hero_variants(
 
     profile["hero_variants"] = normalized_variants
 
+def normalize_cta_type(cta_type: str | None) -> str:
+    if not cta_type:
+        return "general"
+
+    normalized = str(cta_type).strip().lower().replace("-", "_").replace(" ", "_")
+    return CTA_TYPE_ALIASES.get(normalized, normalized)
+
+def select_cta_variant(
+    cta_variants: list[dict],
+    conversion_strategy: str | None = None,
+) -> dict:
+    strategy = normalize_cta_type(conversion_strategy)
+    preferred_order = CTA_STRATEGY_MAP.get(strategy, CTA_STRATEGY_MAP["general"])
+
+    normalized_variants = []
+    for variant in cta_variants or []:
+        if not isinstance(variant, dict):
+            continue
+
+        variant_type = normalize_cta_type(variant.get("type"))
+        text = (variant.get("text") or "").strip()
+
+        if not text:
+            continue
+
+        normalized_variants.append({
+            **variant,
+            "type": variant_type,
+            "text": text,
+        })
+
+    for preferred_type in preferred_order:
+        for variant in normalized_variants:
+            if variant["type"] == preferred_type:
+                return variant
+
+    for fallback_type in CTA_FALLBACK_ORDER:
+        for variant in normalized_variants:
+            if variant["type"] == fallback_type:
+                return variant
+
+    return {
+        "type": "booking",
+        "text": "Book a consultation today",
+    }
+
 def _apply_selected_hero(
     profile: dict[str, Any],
 ) -> None:
@@ -219,6 +302,25 @@ def _apply_selected_hero(
             "selected_hero_type",
             "general",
         )
+
+def _apply_selected_cta(
+    profile: dict[str, Any],
+) -> None:
+
+    selected_cta = select_cta_variant(
+        cta_variants=profile.get(
+            "cta_variants",
+            [],
+        ),
+        conversion_strategy=profile.get(
+            "conversion_strategy",
+            "general",
+        ),
+    )
+
+    profile["selected_cta_type"] = selected_cta["type"]
+    profile["selected_cta"] = selected_cta
+    profile["cta"] = selected_cta["text"]
 
 def generate_business_profile(
     *,
@@ -341,6 +443,30 @@ Each hero variant must contain:
 
 Also generate:
 
+cta_variants
+
+Generate at least 3 CTA variants.
+
+Valid CTA types:
+
+- booking
+- quote
+- purchase
+- consultation
+- demo
+- trial
+- appointment
+- general
+
+Each CTA variant must contain:
+
+{
+  "type": "",
+  "text": ""
+}
+
+Also generate:
+
 selected_hero_type
 
 Choose the hero most likely to convert for the business.
@@ -433,6 +559,21 @@ Use this exact JSON structure:
 
   "cta": "",
 
+  "cta_variants": [
+    {
+      "type": "booking",
+      "text": "Book your appointment today"
+    },
+    {
+      "type": "quote",
+      "text": "Request a free quote"
+    },
+    {
+      "type": "purchase",
+      "text": "Get started today"
+    }
+  ],
+
   "conversion_strategy": "general",
 
   "section_order": [
@@ -511,7 +652,15 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_cta_variants(
+                profile
+            )
+
             _apply_selected_hero(
+                profile
+            )
+
+            _apply_selected_cta(
                 profile
             )
 
@@ -530,6 +679,12 @@ Use this exact JSON structure:
                 ),
                 selected_hero_type=profile.get(
                     "selected_hero_type",
+                ),
+                selected_cta_type=profile.get(
+                    "selected_cta_type",
+                ),
+                cta=profile.get(
+                    "cta",
                 ),
             )
 
