@@ -95,6 +95,39 @@ CTA_TYPE_ALIASES = {
     "schedule": "appointment",
 }
 
+OFFER_STRATEGY_MAP = {
+    "restaurant": ["discount", "bonus"],
+    "saas": ["trial", "demo"],
+    "consultant": ["consultation", "audit"],
+    "contractor": ["quote", "discount"],
+    "agency": ["consultation", "audit"],
+    "medical": ["appointment", "consultation"],
+    "general": ["discount"],
+}
+
+OFFER_FALLBACK_ORDER = [
+    "consultation",
+    "audit",
+    "discount",
+    "trial",
+    "demo",
+    "quote",
+    "bonus",
+    "appointment",
+    "general",
+]
+
+OFFER_TYPE_ALIASES = {
+    "free_consultation": "consultation",
+    "consult": "consultation",
+    "strategy_session": "consultation",
+    "assessment": "audit",
+    "review": "audit",
+    "sale": "discount",
+    "coupon": "discount",
+    "promo": "discount",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -203,12 +236,96 @@ def _normalize_hero_variants(
 
     profile["hero_variants"] = normalized_variants
 
+def _normalize_cta_variants(
+    profile: dict[str, Any],
+) -> None:
+    variants = profile.get("cta_variants", [])
+
+    if not isinstance(variants, list):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+
+        cta_type = normalize_cta_type(
+            variant.get("type")
+        )
+
+        text = str(
+            variant.get("text", "")
+        ).strip()
+
+        if text:
+            normalized_variants.append(
+                {
+                    "type": cta_type,
+                    "text": text,
+                }
+            )
+
+    profile["cta_variants"] = normalized_variants
+
+def _normalize_offer_variants(
+    profile: dict[str, Any],
+) -> None:
+    variants = profile.get("offer_variants", [])
+
+    if not isinstance(variants, list):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+
+        offer_type = normalize_offer_type(
+            variant.get("type")
+        )
+
+        headline = str(
+            variant.get("headline", "")
+        ).strip()
+
+        if headline:
+            normalized_variants.append(
+                {
+                    "type": offer_type,
+                    "headline": headline,
+                }
+            )
+
+    profile["offer_variants"] = normalized_variants
+
 def normalize_cta_type(cta_type: str | None) -> str:
     if not cta_type:
         return "general"
 
     normalized = str(cta_type).strip().lower().replace("-", "_").replace(" ", "_")
     return CTA_TYPE_ALIASES.get(normalized, normalized)
+
+def normalize_offer_type(
+    offer_type: str | None,
+) -> str:
+
+    if not offer_type:
+        return "general"
+
+    normalized = (
+        str(offer_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return OFFER_TYPE_ALIASES.get(
+        normalized,
+        normalized,
+    )
 
 def select_cta_variant(
     cta_variants: list[dict],
@@ -247,6 +364,71 @@ def select_cta_variant(
     return {
         "type": "booking",
         "text": "Book a consultation today",
+    }
+
+def select_offer_variant(
+    offer_variants: list[dict],
+    conversion_strategy: str | None = None,
+) -> dict:
+
+    strategy = normalize_offer_type(
+        conversion_strategy
+    )
+
+    preferred_order = OFFER_STRATEGY_MAP.get(
+        strategy,
+        OFFER_STRATEGY_MAP["general"],
+    )
+
+    normalized_variants = []
+
+    for variant in offer_variants or []:
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        offer_type = normalize_offer_type(
+            variant.get("type")
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if not headline:
+            continue
+
+        normalized_variants.append(
+            {
+                **variant,
+                "type": offer_type,
+                "headline": headline,
+            }
+        )
+
+    for preferred_type in preferred_order:
+
+        for variant in normalized_variants:
+
+            if variant["type"] == preferred_type:
+                return variant
+
+    for fallback_type in OFFER_FALLBACK_ORDER:
+
+        for variant in normalized_variants:
+
+            if variant["type"] == fallback_type:
+                return variant
+
+    return {
+        "type": "discount",
+        "headline": "Special Offer Available Today",
     }
 
 def _apply_selected_hero(
@@ -321,6 +503,29 @@ def _apply_selected_cta(
     profile["selected_cta_type"] = selected_cta["type"]
     profile["selected_cta"] = selected_cta
     profile["cta"] = selected_cta["text"]
+
+def _apply_selected_offer(
+    profile: dict[str, Any],
+) -> None:
+
+    selected_offer = select_offer_variant(
+        offer_variants=profile.get(
+            "offer_variants",
+            [],
+        ),
+        conversion_strategy=profile.get(
+            "conversion_strategy",
+            "general",
+        ),
+    )
+
+    profile["selected_offer_type"] = (
+        selected_offer["type"]
+    )
+
+    profile["selected_offer"] = (
+        selected_offer
+    )
 
 def generate_business_profile(
     *,
@@ -628,6 +833,22 @@ Use this exact JSON structure:
 
             profile = json.loads(content)
 
+            if not profile.get("offer_variants"):
+                profile["offer_variants"] = [
+                    {
+                        "type": "discount",
+                        "headline": "Special Offer Available Today",
+                    },
+                    {
+                        "type": "consultation",
+                        "headline": "Free Consultation Available",
+                    },
+                    {
+                        "type": "bonus",
+                        "headline": "Bonus Service Included",
+                    },
+                ]
+
             branding = profile.get(
                 "branding",
                 {},
@@ -656,11 +877,19 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_offer_variants(
+                profile
+            )
+
             _apply_selected_hero(
                 profile
             )
 
             _apply_selected_cta(
+                profile
+            )
+
+            _apply_selected_offer(
                 profile
             )
 
@@ -682,6 +911,9 @@ Use this exact JSON structure:
                 ),
                 selected_cta_type=profile.get(
                     "selected_cta_type",
+                ),
+                selected_offer_type=profile.get(
+                    "selected_offer_type",
                 ),
                 cta=profile.get(
                     "cta",
