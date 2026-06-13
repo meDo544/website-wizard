@@ -128,6 +128,45 @@ OFFER_TYPE_ALIASES = {
     "promo": "discount",
 }
 
+TRUST_STRATEGY_MAP = {
+    "restaurant": ["reviews", "local", "guarantee"],
+    "saas": ["security", "customers", "case_study"],
+    "consultant": ["experience", "authority", "results"],
+    "contractor": ["reviews", "licensed", "guarantee"],
+    "agency": ["case_study", "results", "clients"],
+    "medical": ["certification", "reviews", "experience"],
+    "general": ["reviews"],
+}
+
+TRUST_FALLBACK_ORDER = [
+    "reviews",
+    "experience",
+    "guarantee",
+    "authority",
+    "results",
+    "case_study",
+    "clients",
+    "customers",
+    "security",
+    "licensed",
+    "certification",
+    "local",
+    "general",
+]
+
+TRUST_TYPE_ALIASES = {
+    "testimonial": "reviews",
+    "testimonials": "reviews",
+    "rating": "reviews",
+    "ratings": "reviews",
+    "years": "experience",
+    "years_in_business": "experience",
+    "proof": "results",
+    "portfolio": "case_study",
+    "certified": "certification",
+    "licensed_insured": "licensed",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -298,7 +337,51 @@ def _normalize_offer_variants(
                 }
             )
 
-    profile["offer_variants"] = normalized_variants
+def _normalize_trust_variants(
+    profile: dict[str, Any],
+) -> None:
+
+    variants = profile.get(
+        "trust_variants",
+        [],
+    )
+
+    if not isinstance(
+        variants,
+        list,
+    ):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        trust_type = normalize_trust_type(
+            variant.get("type")
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if headline:
+            normalized_variants.append(
+                {
+                    "type": trust_type,
+                    "headline": headline,
+                }
+            )
+
+    profile["trust_variants"] = normalized_variants
 
 def normalize_cta_type(cta_type: str | None) -> str:
     if not cta_type:
@@ -323,6 +406,26 @@ def normalize_offer_type(
     )
 
     return OFFER_TYPE_ALIASES.get(
+        normalized,
+        normalized,
+    )
+
+def normalize_trust_type(
+    trust_type: str | None,
+) -> str:
+
+    if not trust_type:
+        return "general"
+
+    normalized = (
+        str(trust_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return TRUST_TYPE_ALIASES.get(
         normalized,
         normalized,
     )
@@ -431,6 +534,71 @@ def select_offer_variant(
         "headline": "Special Offer Available Today",
     }
 
+def select_trust_variant(
+    trust_variants: list[dict],
+    conversion_strategy: str | None = None,
+) -> dict:
+
+    strategy = normalize_trust_type(
+        conversion_strategy
+    )
+
+    preferred_order = TRUST_STRATEGY_MAP.get(
+        strategy,
+        TRUST_STRATEGY_MAP["general"],
+    )
+
+    normalized_variants = []
+
+    for variant in trust_variants or []:
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        trust_type = normalize_trust_type(
+            variant.get("type")
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if not headline:
+            continue
+
+        normalized_variants.append(
+            {
+                **variant,
+                "type": trust_type,
+                "headline": headline,
+            }
+        )
+
+    for preferred_type in preferred_order:
+
+        for variant in normalized_variants:
+
+            if variant["type"] == preferred_type:
+                return variant
+
+    for fallback_type in TRUST_FALLBACK_ORDER:
+
+        for variant in normalized_variants:
+
+            if variant["type"] == fallback_type:
+                return variant
+
+    return {
+        "type": "discount",
+        "headline": "Special Trust Available Today",
+    }
+
 def _apply_selected_hero(
     profile: dict[str, Any],
 ) -> None:
@@ -525,6 +693,29 @@ def _apply_selected_offer(
 
     profile["selected_offer"] = (
         selected_offer
+    )
+
+def _apply_selected_trust(
+    profile: dict[str, Any],
+) -> None:
+
+    selected_trust = select_trust_variant(
+        trust_variants=profile.get(
+            "trust_variants",
+            [],
+        ),
+        conversion_strategy=profile.get(
+            "conversion_strategy",
+            "general",
+        ),
+    )
+
+    profile["selected_trust_type"] = (
+        selected_trust["type"]
+    )
+
+    profile["selected_trust"] = (
+        selected_trust
     )
 
 def generate_business_profile(
@@ -854,6 +1045,22 @@ Use this exact JSON structure:
                 {},
             )
 
+            if not profile.get("trust_variants"):
+                profile["trust_variants"] = [
+                    {
+                        "type": "reviews",
+                        "headline": "Trusted by Happy Customers",
+                    },
+                    {
+                        "type": "experience",
+                        "headline": "Experienced Professionals You Can Rely On",
+                    },
+                    {
+                        "type": "guarantee",
+                        "headline": "Satisfaction Guaranteed",
+                    },
+                ]
+
             if "logo_text\n" in branding:
                 branding["logo_text"] = branding.pop(
                     "logo_text\n"
@@ -881,6 +1088,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_trust_variants(
+                profile
+            )
+
             _apply_selected_hero(
                 profile
             )
@@ -890,6 +1101,10 @@ Use this exact JSON structure:
             )
 
             _apply_selected_offer(
+                profile
+            )
+
+            _apply_selected_trust(
                 profile
             )
 
@@ -914,6 +1129,9 @@ Use this exact JSON structure:
                 ),
                 selected_offer_type=profile.get(
                     "selected_offer_type",
+                ),
+                selected_trust_type=profile.get(
+                    "selected_trust_type",
                 ),
                 cta=profile.get(
                     "cta",
