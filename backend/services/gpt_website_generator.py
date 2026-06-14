@@ -167,6 +167,46 @@ TRUST_TYPE_ALIASES = {
     "licensed_insured": "licensed",
 }
 
+SOCIAL_PROOF_STRATEGY_MAP = {
+    "restaurant": ["reviews", "customers", "local"],
+    "saas": ["customers", "users", "case_study"],
+    "consultant": ["results", "clients", "case_study"],
+    "contractor": ["projects", "reviews", "local"],
+    "agency": ["clients", "case_study", "results"],
+    "medical": ["patients", "reviews", "certification"],
+    "general": ["customers"],
+}
+
+SOCIAL_PROOF_FALLBACK_ORDER = [
+    "customers",
+    "clients",
+    "users",
+    "projects",
+    "reviews",
+    "results",
+    "case_study",
+    "community",
+    "patients",
+    "local",
+    "certification",
+    "general",
+]
+
+SOCIAL_PROOF_TYPE_ALIASES = {
+    "customer": "customers",
+    "client": "clients",
+    "user": "users",
+    "project": "projects",
+    "testimonial": "reviews",
+    "testimonials": "reviews",
+    "rating": "reviews",
+    "ratings": "reviews",
+    "proof": "results",
+    "portfolio": "case_study",
+    "case_studies": "case_study",
+    "community_members": "community",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -383,6 +423,56 @@ def _normalize_trust_variants(
 
     profile["trust_variants"] = normalized_variants
 
+def _normalize_social_proof_variants(
+    profile: dict[str, Any],
+) -> None:
+
+    variants = profile.get(
+        "social_proof_variants",
+        [],
+    )
+
+    if not isinstance(
+        variants,
+        list,
+    ):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        social_proof_type = (
+            normalize_social_proof_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if headline:
+            normalized_variants.append(
+                {
+                    "type": social_proof_type,
+                    "headline": headline,
+                }
+            )
+
+    profile[
+        "social_proof_variants"
+    ] = normalized_variants
+
 def normalize_cta_type(cta_type: str | None) -> str:
     if not cta_type:
         return "general"
@@ -426,6 +516,26 @@ def normalize_trust_type(
     )
 
     return TRUST_TYPE_ALIASES.get(
+        normalized,
+        normalized,
+    )
+
+def normalize_social_proof_type(
+    social_proof_type: str | None,
+) -> str:
+
+    if not social_proof_type:
+        return "general"
+
+    normalized = (
+        str(social_proof_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return SOCIAL_PROOF_TYPE_ALIASES.get(
         normalized,
         normalized,
     )
@@ -599,6 +709,89 @@ def select_trust_variant(
         "headline": "Special Trust Available Today",
     }
 
+def select_social_proof_variant(
+    social_proof_variants: list[dict],
+    conversion_strategy: str | None = None,
+) -> dict:
+
+    strategy = normalize_social_proof_type(
+        conversion_strategy
+    )
+
+    preferred_order = (
+        SOCIAL_PROOF_STRATEGY_MAP.get(
+            strategy,
+            SOCIAL_PROOF_STRATEGY_MAP[
+                "general"
+            ],
+        )
+    )
+
+    normalized_variants = []
+
+    for variant in (
+        social_proof_variants or []
+    ):
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        social_proof_type = (
+            normalize_social_proof_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if not headline:
+            continue
+
+        normalized_variants.append(
+            {
+                **variant,
+                "type": social_proof_type,
+                "headline": headline,
+            }
+        )
+
+    for preferred_type in preferred_order:
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == preferred_type
+            ):
+                return variant
+
+    for fallback_type in (
+        SOCIAL_PROOF_FALLBACK_ORDER
+    ):
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == fallback_type
+            ):
+                return variant
+
+    return {
+        "type": "customers",
+        "headline": (
+            "Trusted by Customers"
+        ),
+    }
+
 def _apply_selected_hero(
     profile: dict[str, Any],
 ) -> None:
@@ -717,6 +910,31 @@ def _apply_selected_trust(
     profile["selected_trust"] = (
         selected_trust
     )
+
+def _apply_selected_social_proof(
+    profile: dict[str, Any],
+) -> None:
+
+    selected_social_proof = (
+        select_social_proof_variant(
+            social_proof_variants=profile.get(
+                "social_proof_variants",
+                [],
+            ),
+            conversion_strategy=profile.get(
+                "conversion_strategy",
+                "general",
+            ),
+        )
+    )
+
+    profile[
+        "selected_social_proof_type"
+    ] = selected_social_proof["type"]
+
+    profile[
+        "selected_social_proof"
+    ] = selected_social_proof
 
 def generate_business_profile(
     *,
@@ -863,6 +1081,36 @@ Each CTA variant must contain:
 
 Also generate:
 
+social_proof_variants
+
+social_proof_variants is REQUIRED.
+
+Generate at least 3 social proof variants.
+
+Valid social proof types:
+
+- customers
+- clients
+- users
+- projects
+- reviews
+- results
+- case_study
+- community
+- patients
+- local
+- certification
+- general
+
+Each social proof variant must contain:
+
+{
+  "type": "",
+  "headline": ""
+}
+
+Also generate:
+
 selected_hero_type
 
 Choose the hero most likely to convert for the business.
@@ -970,6 +1218,36 @@ Use this exact JSON structure:
     }
   ],
 
+  "offer_variants": [
+    {
+      "type": "discount",
+      "headline": "Save 20% Today"
+    },
+    {
+      "type": "consultation",
+      "headline": "Free Strategy Session"
+    },
+    {
+      "type": "bonus",
+      "headline": "Free Setup Included"
+    }
+  ],
+
+  "social_proof_variants": [
+    {
+      "type": "customers",
+      "headline": "Trusted by 5,000+ Customers"
+    },
+    {
+      "type": "projects",
+      "headline": "Over 1,200 Successful Projects"
+    },
+    {
+      "type": "community",
+      "headline": "Join Our Growing Community"
+    }
+  ],
+
   "conversion_strategy": "general",
 
   "section_order": [
@@ -1061,6 +1339,22 @@ Use this exact JSON structure:
                     },
                 ]
 
+            if not profile.get("social_proof_variants"):
+                profile["social_proof_variants"] = [
+                    {
+                        "type": "customers",
+                        "headline": "Trusted by Customers",
+                    },
+                    {
+                        "type": "projects",
+                        "headline": "Successful Projects Delivered",
+                    },
+                    {
+                        "type": "community",
+                        "headline": "Join Our Growing Community",
+                    },
+                ]
+
             if "logo_text\n" in branding:
                 branding["logo_text"] = branding.pop(
                     "logo_text\n"
@@ -1092,6 +1386,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_social_proof_variants(
+                profile
+            )
+
             _apply_selected_hero(
                 profile
             )
@@ -1105,6 +1403,10 @@ Use this exact JSON structure:
             )
 
             _apply_selected_trust(
+                profile
+            )
+
+            _apply_selected_social_proof(
                 profile
             )
 
@@ -1132,6 +1434,9 @@ Use this exact JSON structure:
                 ),
                 selected_trust_type=profile.get(
                     "selected_trust_type",
+                ),
+                selected_social_proof_type=profile.get(
+                    "selected_social_proof_type",
                 ),
                 cta=profile.get(
                     "cta",
