@@ -207,6 +207,35 @@ SOCIAL_PROOF_TYPE_ALIASES = {
     "community_members": "community",
 }
 
+RISK_REVERSAL_STRATEGY_MAP = {
+    "restaurant": ["guarantee", "bonus", "general"],
+    "saas": ["free_trial", "money_back", "guarantee"],
+    "consultant": ["consultation", "guarantee", "bonus"],
+    "contractor": ["guarantee", "warranty", "money_back"],
+    "agency": ["guarantee", "consultation", "money_back"],
+    "medical": ["guarantee", "consultation", "general"],
+    "general": ["guarantee"],
+}
+
+RISK_REVERSAL_FALLBACK_ORDER = [
+    "guarantee",
+    "money_back",
+    "free_trial",
+    "warranty",
+    "consultation",
+    "bonus",
+    "general",
+]
+
+RISK_REVERSAL_TYPE_ALIASES = {
+    "moneyback": "money_back",
+    "money_back_guarantee": "money_back",
+    "trial": "free_trial",
+    "free_trial_offer": "free_trial",
+    "warranty_offer": "warranty",
+    "free_consultation": "consultation",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -473,6 +502,56 @@ def _normalize_social_proof_variants(
         "social_proof_variants"
     ] = normalized_variants
 
+def _normalize_risk_reversal_variants(
+    profile: dict[str, Any],
+) -> None:
+
+    variants = profile.get(
+        "risk_reversal_variants",
+        [],
+    )
+
+    if not isinstance(
+        variants,
+        list,
+    ):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        risk_reversal_type = (
+            normalize_risk_reversal_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if headline:
+            normalized_variants.append(
+                {
+                    "type": risk_reversal_type,
+                    "headline": headline,
+                }
+            )
+
+    profile[
+        "risk_reversal_variants"
+    ] = normalized_variants
+
 def normalize_cta_type(cta_type: str | None) -> str:
     if not cta_type:
         return "general"
@@ -536,6 +615,26 @@ def normalize_social_proof_type(
     )
 
     return SOCIAL_PROOF_TYPE_ALIASES.get(
+        normalized,
+        normalized,
+    )
+
+def normalize_risk_reversal_type(
+    risk_reversal_type: str | None,
+) -> str:
+
+    if not risk_reversal_type:
+        return "general"
+
+    normalized = (
+        str(risk_reversal_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return RISK_REVERSAL_TYPE_ALIASES.get(
         normalized,
         normalized,
     )
@@ -792,6 +891,89 @@ def select_social_proof_variant(
         ),
     }
 
+def select_risk_reversal_variant(
+    risk_reversal_variants: list[dict],
+    conversion_strategy: str | None = None,
+) -> dict:
+
+    strategy = normalize_risk_reversal_type(
+        conversion_strategy
+    )
+
+    preferred_order = (
+        RISK_REVERSAL_STRATEGY_MAP.get(
+            strategy,
+            RISK_REVERSAL_STRATEGY_MAP[
+                "general"
+            ],
+        )
+    )
+
+    normalized_variants = []
+
+    for variant in (
+        risk_reversal_variants or []
+    ):
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        risk_reversal_type = (
+            normalize_risk_reversal_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if not headline:
+            continue
+
+        normalized_variants.append(
+            {
+                **variant,
+                "type": risk_reversal_type,
+                "headline": headline,
+            }
+        )
+
+    for preferred_type in preferred_order:
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == preferred_type
+            ):
+                return variant
+
+    for fallback_type in (
+        RISK_REVERSAL_FALLBACK_ORDER
+    ):
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == fallback_type
+            ):
+                return variant
+
+    return {
+        "type": "guarantee",
+        "headline": (
+            "100% Satisfaction Guaranteed"
+        ),
+    }
+
 def _apply_selected_hero(
     profile: dict[str, Any],
 ) -> None:
@@ -935,6 +1117,31 @@ def _apply_selected_social_proof(
     profile[
         "selected_social_proof"
     ] = selected_social_proof
+
+def _apply_selected_risk_reversal(
+    profile: dict[str, Any],
+) -> None:
+
+    selected_risk_reversal = (
+        select_risk_reversal_variant(
+            risk_reversal_variants=profile.get(
+                "risk_reversal_variants",
+                [],
+            ),
+            conversion_strategy=profile.get(
+                "conversion_strategy",
+                "general",
+            ),
+        )
+    )
+
+    profile[
+        "selected_risk_reversal_type"
+    ] = selected_risk_reversal["type"]
+
+    profile[
+        "selected_risk_reversal"
+    ] = selected_risk_reversal
 
 def generate_business_profile(
     *,
@@ -1111,6 +1318,31 @@ Each social proof variant must contain:
 
 Also generate:
 
+risk_reversal_variants
+
+risk_reversal_variants is REQUIRED.
+
+Generate at least 3 risk reversal variants.
+
+Valid risk reversal types:
+
+- guarantee
+- money_back
+- free_trial
+- warranty
+- consultation
+- bonus
+- general
+
+Each risk reversal variant must contain:
+
+{
+  "type": "",
+  "headline": ""
+}
+
+Also generate:
+
 selected_hero_type
 
 Choose the hero most likely to convert for the business.
@@ -1248,6 +1480,21 @@ Use this exact JSON structure:
     }
   ],
 
+  "risk_reversal_variants": [
+    {
+      "type": "guarantee",
+      "headline": "100% Satisfaction Guarantee"
+    },
+    {
+      "type": "money_back",
+      "headline": "30-Day Money Back Guarantee"
+    },
+    {
+      "type": "free_trial",
+      "headline": "Try It Risk Free"
+    }
+  ],
+
   "conversion_strategy": "general",
 
   "section_order": [
@@ -1355,6 +1602,22 @@ Use this exact JSON structure:
                     },
                 ]
 
+            if not profile.get("risk_reversal_variants"):
+                profile["risk_reversal_variants"] = [
+                    {
+                        "type": "guarantee",
+                        "headline": "100% Satisfaction Guarantee",
+                    },
+                    {
+                        "type": "money_back",
+                        "headline": "30-Day Money Back Guarantee",
+                    },
+                    {
+                        "type": "free_trial",
+                        "headline": "Try It Risk Free",
+                    },
+                ]
+
             if "logo_text\n" in branding:
                 branding["logo_text"] = branding.pop(
                     "logo_text\n"
@@ -1390,6 +1653,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_risk_reversal_variants(
+                profile
+            )
+
             _apply_selected_hero(
                 profile
             )
@@ -1407,6 +1674,10 @@ Use this exact JSON structure:
             )
 
             _apply_selected_social_proof(
+                profile
+            )
+
+            _apply_selected_risk_reversal(
                 profile
             )
 
@@ -1437,6 +1708,9 @@ Use this exact JSON structure:
                 ),
                 selected_social_proof_type=profile.get(
                     "selected_social_proof_type",
+                ),
+                selected_risk_reversal_type=profile.get(
+                    "selected_risk_reversal_type",
                 ),
                 cta=profile.get(
                     "cta",
