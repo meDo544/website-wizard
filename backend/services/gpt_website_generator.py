@@ -267,6 +267,42 @@ URGENCY_TYPE_ALIASES = {
     "early_access": "limited_access",
 }
 
+OBJECTION_STRATEGY_MAP = {
+    "restaurant": ["price", "trust", "convenience"],
+    "saas": ["complexity", "price", "trust"],
+    "consultant": ["trust", "price", "results"],
+    "contractor": ["trust", "price", "timeline"],
+    "agency": ["results", "price", "trust"],
+    "medical": ["trust", "safety", "convenience"],
+    "general": ["trust"],
+}
+
+OBJECTION_FALLBACK_ORDER = [
+    "trust",
+    "price",
+    "complexity",
+    "results",
+    "timeline",
+    "safety",
+    "convenience",
+    "general",
+]
+
+OBJECTION_TYPE_ALIASES = {
+    "cost": "price",
+    "budget": "price",
+    "expensive": "price",
+    "difficulty": "complexity",
+    "hard_to_use": "complexity",
+    "setup": "complexity",
+    "credibility": "trust",
+    "proof": "results",
+    "speed": "timeline",
+    "time": "timeline",
+    "risk": "safety",
+    "easy": "convenience",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -633,6 +669,56 @@ def _normalize_urgency_variants(
         "urgency_variants"
     ] = normalized_variants
 
+def _normalize_objection_variants(
+    profile: dict[str, Any],
+) -> None:
+
+    variants = profile.get(
+        "objection_variants",
+        [],
+    )
+
+    if not isinstance(
+        variants,
+        list,
+    ):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        objection_type = (
+            normalize_objection_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if headline:
+            normalized_variants.append(
+                {
+                    "type": objection_type,
+                    "headline": headline,
+                }
+            )
+
+    profile[
+        "objection_variants"
+    ] = normalized_variants
+
 def normalize_cta_type(cta_type: str | None) -> str:
     if not cta_type:
         return "general"
@@ -736,6 +822,26 @@ def normalize_urgency_type(
     )
 
     return URGENCY_TYPE_ALIASES.get(
+        normalized,
+        normalized,
+    )
+
+def normalize_objection_type(
+    objection_type: str | None,
+) -> str:
+
+    if not objection_type:
+        return "general"
+
+    normalized = (
+        str(objection_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return OBJECTION_TYPE_ALIASES.get(
         normalized,
         normalized,
     )
@@ -1158,6 +1264,89 @@ def select_urgency_variant(
         ),
     }
 
+def select_objection_variant(
+    objection_variants: list[dict],
+    conversion_strategy: str | None = None,
+) -> dict:
+
+    strategy = normalize_objection_type(
+        conversion_strategy
+    )
+
+    preferred_order = (
+        OBJECTION_STRATEGY_MAP.get(
+            strategy,
+            OBJECTION_STRATEGY_MAP[
+                "general"
+            ],
+        )
+    )
+
+    normalized_variants = []
+
+    for variant in (
+        objection_variants or []
+    ):
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        objection_type = (
+            normalize_objection_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if not headline:
+            continue
+
+        normalized_variants.append(
+            {
+                **variant,
+                "type": objection_type,
+                "headline": headline,
+            }
+        )
+
+    for preferred_type in preferred_order:
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == preferred_type
+            ):
+                return variant
+
+    for fallback_type in (
+        OBJECTION_FALLBACK_ORDER
+    ):
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == fallback_type
+            ):
+                return variant
+
+    return {
+        "type": "trust",
+        "headline": (
+            "Trusted Support Every Step of the Way"
+        ),
+    }
+
 def _apply_selected_hero(
     profile: dict[str, Any],
 ) -> None:
@@ -1351,6 +1540,31 @@ def _apply_selected_urgency(
     profile[
         "selected_urgency"
     ] = selected_urgency
+
+def _apply_selected_objection(
+    profile: dict[str, Any],
+) -> None:
+
+    selected_objection = (
+        select_objection_variant(
+            objection_variants=profile.get(
+                "objection_variants",
+                [],
+            ),
+            conversion_strategy=profile.get(
+                "conversion_strategy",
+                "general",
+            ),
+        )
+    )
+
+    profile[
+        "selected_objection_type"
+    ] = selected_objection["type"]
+
+    profile[
+        "selected_objection"
+    ] = selected_objection
 
 def generate_business_profile(
     *,
@@ -1577,6 +1791,32 @@ Each urgency variant must contain:
 
 Also generate:
 
+objection_variants
+
+objection_variants is REQUIRED.
+
+Generate at least 3 objection variants.
+
+Valid objection types:
+
+- price
+- trust
+- complexity
+- results
+- timeline
+- safety
+- convenience
+- general
+
+Each objection variant must contain:
+
+{
+  "type": "",
+  "headline": ""
+}
+
+Also generate:
+
 selected_hero_type
 
 Choose the hero most likely to convert for the business.
@@ -1744,6 +1984,21 @@ Use this exact JSON structure:
     }
   ],
 
+  "objection_variants": [
+    {
+      "type": "price",
+      "headline": "Affordable Options Available"
+    },
+    {
+      "type": "complexity",
+      "headline": "Easy Setup and Ongoing Support"
+    },
+    {
+      "type": "trust",
+      "headline": "Trusted by Thousands of Customers"
+    }
+  ],
+
   "conversion_strategy": "general",
 
   "section_order": [
@@ -1883,6 +2138,22 @@ Use this exact JSON structure:
                     },
                 ]
 
+            if not profile.get("objection_variants"):
+                profile["objection_variants"] = [
+                    {
+                        "type": "price",
+                        "headline": "Affordable Options Available",
+                    },
+                    {
+                        "type": "complexity",
+                        "headline": "Easy Setup and Ongoing Support",
+                    },
+                    {
+                        "type": "trust",
+                        "headline": "Trusted by Thousands of Customers",
+                    },
+                ]
+
             if "logo_text\n" in branding:
                 branding["logo_text"] = branding.pop(
                     "logo_text\n"
@@ -1925,6 +2196,9 @@ Use this exact JSON structure:
             _normalize_urgency_variants(
                 profile
             )
+            _normalize_objection_variants(
+                profile
+            )
 
             _apply_selected_hero(
                 profile
@@ -1951,6 +2225,9 @@ Use this exact JSON structure:
             )
 
             _apply_selected_urgency(
+                profile
+            )
+            _apply_selected_objection(
                 profile
             )
 
@@ -1987,6 +2264,9 @@ Use this exact JSON structure:
                 ),
                 selected_urgency_type=profile.get(
                     "selected_urgency_type",
+                ),
+                selected_objection_type=profile.get(
+                    "selected_objection_type",
                 ),
                 cta=profile.get(
                     "cta",
