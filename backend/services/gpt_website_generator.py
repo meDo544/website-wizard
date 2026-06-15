@@ -236,6 +236,37 @@ RISK_REVERSAL_TYPE_ALIASES = {
     "free_consultation": "consultation",
 }
 
+URGENCY_STRATEGY_MAP = {
+    "restaurant": ["limited_time", "seasonal", "limited_stock"],
+    "saas": ["limited_time", "expiring_bonus", "limited_access"],
+    "consultant": ["limited_time", "limited_spots", "expiring_bonus"],
+    "contractor": ["seasonal", "limited_time", "limited_spots"],
+    "agency": ["limited_spots", "limited_time", "expiring_bonus"],
+    "medical": ["limited_spots", "seasonal", "limited_time"],
+    "general": ["limited_time"],
+}
+
+URGENCY_FALLBACK_ORDER = [
+    "limited_time",
+    "limited_spots",
+    "limited_stock",
+    "seasonal",
+    "expiring_bonus",
+    "limited_access",
+    "general",
+]
+
+URGENCY_TYPE_ALIASES = {
+    "deadline": "limited_time",
+    "countdown": "limited_time",
+    "spots": "limited_spots",
+    "availability": "limited_spots",
+    "stock": "limited_stock",
+    "inventory": "limited_stock",
+    "bonus_expiry": "expiring_bonus",
+    "early_access": "limited_access",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -552,6 +583,56 @@ def _normalize_risk_reversal_variants(
         "risk_reversal_variants"
     ] = normalized_variants
 
+def _normalize_urgency_variants(
+    profile: dict[str, Any],
+) -> None:
+
+    variants = profile.get(
+        "urgency_variants",
+        [],
+    )
+
+    if not isinstance(
+        variants,
+        list,
+    ):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        urgency_type = (
+            normalize_urgency_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if headline:
+            normalized_variants.append(
+                {
+                    "type": urgency_type,
+                    "headline": headline,
+                }
+            )
+
+    profile[
+        "urgency_variants"
+    ] = normalized_variants
+
 def normalize_cta_type(cta_type: str | None) -> str:
     if not cta_type:
         return "general"
@@ -635,6 +716,26 @@ def normalize_risk_reversal_type(
     )
 
     return RISK_REVERSAL_TYPE_ALIASES.get(
+        normalized,
+        normalized,
+    )
+
+def normalize_urgency_type(
+    urgency_type: str | None,
+) -> str:
+
+    if not urgency_type:
+        return "general"
+
+    normalized = (
+        str(urgency_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return URGENCY_TYPE_ALIASES.get(
         normalized,
         normalized,
     )
@@ -974,6 +1075,89 @@ def select_risk_reversal_variant(
         ),
     }
 
+def select_urgency_variant(
+    urgency_variants: list[dict],
+    conversion_strategy: str | None = None,
+) -> dict:
+
+    strategy = normalize_urgency_type(
+        conversion_strategy
+    )
+
+    preferred_order = (
+        URGENCY_STRATEGY_MAP.get(
+            strategy,
+            URGENCY_STRATEGY_MAP[
+                "general"
+            ],
+        )
+    )
+
+    normalized_variants = []
+
+    for variant in (
+        urgency_variants or []
+    ):
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        urgency_type = (
+            normalize_urgency_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if not headline:
+            continue
+
+        normalized_variants.append(
+            {
+                **variant,
+                "type": urgency_type,
+                "headline": headline,
+            }
+        )
+
+    for preferred_type in preferred_order:
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == preferred_type
+            ):
+                return variant
+
+    for fallback_type in (
+        URGENCY_FALLBACK_ORDER
+    ):
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == fallback_type
+            ):
+                return variant
+
+    return {
+        "type": "limited_time",
+        "headline": (
+            "Limited Time Offer Available"
+        ),
+    }
+
 def _apply_selected_hero(
     profile: dict[str, Any],
 ) -> None:
@@ -1142,6 +1326,31 @@ def _apply_selected_risk_reversal(
     profile[
         "selected_risk_reversal"
     ] = selected_risk_reversal
+
+def _apply_selected_urgency(
+    profile: dict[str, Any],
+) -> None:
+
+    selected_urgency = (
+        select_urgency_variant(
+            urgency_variants=profile.get(
+                "urgency_variants",
+                [],
+            ),
+            conversion_strategy=profile.get(
+                "conversion_strategy",
+                "general",
+            ),
+        )
+    )
+
+    profile[
+        "selected_urgency_type"
+    ] = selected_urgency["type"]
+
+    profile[
+        "selected_urgency"
+    ] = selected_urgency
 
 def generate_business_profile(
     *,
@@ -1343,6 +1552,31 @@ Each risk reversal variant must contain:
 
 Also generate:
 
+urgency_variants
+
+urgency_variants is REQUIRED.
+
+Generate at least 3 urgency variants.
+
+Valid urgency types:
+
+- limited_time
+- limited_spots
+- limited_stock
+- seasonal
+- expiring_bonus
+- limited_access
+- general
+
+Each urgency variant must contain:
+
+{
+  "type": "",
+  "headline": ""
+}
+
+Also generate:
+
 selected_hero_type
 
 Choose the hero most likely to convert for the business.
@@ -1495,6 +1729,21 @@ Use this exact JSON structure:
     }
   ],
 
+  "urgency_variants": [
+    {
+      "type": "limited_time",
+      "headline": "Offer Ends This Week"
+    },
+    {
+      "type": "limited_spots",
+      "headline": "Only 5 Spots Remaining"
+    },
+    {
+      "type": "seasonal",
+      "headline": "Summer Promotion Ends Soon"
+    }
+  ],
+
   "conversion_strategy": "general",
 
   "section_order": [
@@ -1618,6 +1867,22 @@ Use this exact JSON structure:
                     },
                 ]
 
+            if not profile.get("urgency_variants"):
+                profile["urgency_variants"] = [
+                    {
+                        "type": "limited_time",
+                        "headline": "Offer Ends This Week",
+                    },
+                    {
+                        "type": "limited_spots",
+                        "headline": "Only 5 Spots Remaining",
+                    },
+                    {
+                        "type": "seasonal",
+                        "headline": "Seasonal Promotion Available",
+                    },
+                ]
+
             if "logo_text\n" in branding:
                 branding["logo_text"] = branding.pop(
                     "logo_text\n"
@@ -1657,6 +1922,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_urgency_variants(
+                profile
+            )
+
             _apply_selected_hero(
                 profile
             )
@@ -1678,6 +1947,10 @@ Use this exact JSON structure:
             )
 
             _apply_selected_risk_reversal(
+                profile
+            )
+
+            _apply_selected_urgency(
                 profile
             )
 
@@ -1711,6 +1984,9 @@ Use this exact JSON structure:
                 ),
                 selected_risk_reversal_type=profile.get(
                     "selected_risk_reversal_type",
+                ),
+                selected_urgency_type=profile.get(
+                    "selected_urgency_type",
                 ),
                 cta=profile.get(
                     "cta",
