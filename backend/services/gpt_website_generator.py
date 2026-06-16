@@ -441,6 +441,40 @@ EMOTIONAL_TRIGGER_TYPE_ALIASES = {
     "dream": "aspiration",
 }
 
+BUYER_MOTIVATION_STRATEGY_MAP = {
+    "restaurant": ["comfort", "save_money", "status"],
+    "saas": ["save_time", "growth", "success"],
+    "consultant": ["growth", "success", "security"],
+    "contractor": ["security", "save_money", "comfort"],
+    "agency": ["growth", "status", "success"],
+    "medical": ["security", "comfort", "save_time"],
+    "general": ["growth"],
+}
+
+BUYER_MOTIVATION_FALLBACK_ORDER = [
+    "growth",
+    "save_time",
+    "save_money",
+    "success",
+    "comfort",
+    "security",
+    "status",
+    "general",
+]
+
+BUYER_MOTIVATION_TYPE_ALIASES = {
+    "time_savings": "save_time",
+    "money_savings": "save_money",
+    "wealth": "save_money",
+    "achievement": "success",
+    "winning": "success",
+    "safety": "security",
+    "safe": "security",
+    "ease": "comfort",
+    "convenience": "comfort",
+    "scale": "growth",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -1057,6 +1091,56 @@ def _normalize_emotional_trigger_variants(
         "emotional_trigger_variants"
     ] = normalized_variants
 
+def _normalize_buyer_motivation_variants(
+    profile: dict[str, Any],
+) -> None:
+
+    variants = profile.get(
+        "buyer_motivation_variants",
+        [],
+    )
+
+    if not isinstance(
+        variants,
+        list,
+    ):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        buyer_motivation_type = (
+            normalize_buyer_motivation_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if headline:
+            normalized_variants.append(
+                {
+                    "type": buyer_motivation_type,
+                    "headline": headline,
+                }
+            )
+
+    profile[
+        "buyer_motivation_variants"
+    ] = normalized_variants
+
 def normalize_cta_type(cta_type: str | None) -> str:
     if not cta_type:
         return "general"
@@ -1260,6 +1344,26 @@ def normalize_emotional_trigger_type(
     )
 
     return EMOTIONAL_TRIGGER_TYPE_ALIASES.get(
+        normalized,
+        normalized,
+    )
+
+def normalize_buyer_motivation_type(
+    buyer_motivation_type: str | None,
+) -> str:
+
+    if not buyer_motivation_type:
+        return "general"
+
+    normalized = (
+        str(buyer_motivation_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return BUYER_MOTIVATION_TYPE_ALIASES.get(
         normalized,
         normalized,
     )
@@ -2097,6 +2201,89 @@ def select_emotional_trigger_variant(
         ),
     }
 
+def select_buyer_motivation_variant(
+    buyer_motivation_variants: list[dict],
+    conversion_strategy: str | None = None,
+) -> dict:
+
+    strategy = normalize_buyer_motivation_type(
+        conversion_strategy
+    )
+
+    preferred_order = (
+        BUYER_MOTIVATION_STRATEGY_MAP.get(
+            strategy,
+            BUYER_MOTIVATION_STRATEGY_MAP[
+                "general"
+            ],
+        )
+    )
+
+    normalized_variants = []
+
+    for variant in (
+        buyer_motivation_variants or []
+    ):
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        buyer_motivation_type = (
+            normalize_buyer_motivation_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if not headline:
+            continue
+
+        normalized_variants.append(
+            {
+                **variant,
+                "type": buyer_motivation_type,
+                "headline": headline,
+            }
+        )
+
+    for preferred_type in preferred_order:
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == preferred_type
+            ):
+                return variant
+
+    for fallback_type in (
+        BUYER_MOTIVATION_FALLBACK_ORDER
+    ):
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == fallback_type
+            ):
+                return variant
+
+    return {
+        "type": "growth",
+        "headline": (
+            "Accelerate Your Personal and Business Growth"
+        ),
+    }
+
 def _apply_selected_hero(
     profile: dict[str, Any],
 ) -> None:
@@ -2415,6 +2602,31 @@ def _apply_selected_emotional_trigger(
     profile[
         "selected_emotional_trigger"
     ] = selected_emotional_trigger
+
+def _apply_selected_buyer_motivation(
+    profile: dict[str, Any],
+) -> None:
+
+    selected_buyer_motivation = (
+        select_buyer_motivation_variant(
+            buyer_motivation_variants=profile.get(
+                "buyer_motivation_variants",
+                [],
+            ),
+            conversion_strategy=profile.get(
+                "conversion_strategy",
+                "general",
+            ),
+        )
+    )
+
+    profile[
+        "selected_buyer_motivation_type"
+    ] = selected_buyer_motivation["type"]
+
+    profile[
+        "selected_buyer_motivation"
+    ] = selected_buyer_motivation
 
 def generate_business_profile(
     *,
@@ -2771,6 +2983,32 @@ Each emotional trigger variant must contain:
 
 Also generate:
 
+buyer_motivation_variants
+
+buyer_motivation_variants is REQUIRED.
+
+Generate at least 3 buyer motivation variants.
+
+Valid buyer motivation types:
+
+- save_time
+- save_money
+- growth
+- success
+- comfort
+- security
+- status
+- general
+
+Each buyer motivation variant must contain:
+
+{
+  "type": "",
+  "headline": ""
+}
+
+Also generate:
+
 selected_hero_type
 
 Choose the hero most likely to convert for the business.
@@ -3013,6 +3251,21 @@ Use this exact JSON structure:
     }
   ],
 
+  "buyer_motivation_variants": [
+    {
+      "type": "save_time",
+      "headline": "Get More Done in Less Time"
+    },
+    {
+      "type": "save_money",
+      "headline": "Keep More Money in Your Pocket"
+    },
+    {
+      "type": "growth",
+      "headline": "Accelerate Your Personal and Business Growth"
+    }
+  ],
+
   "conversion_strategy": "general",
 
   "section_order": [
@@ -3244,6 +3497,28 @@ Use this exact JSON structure:
                     },
                 ]
 
+            if not profile.get("buyer_motivation_variants"):
+                profile["buyer_motivation_variants"] = [
+                    {
+                        "type": "save_time",
+                        "headline": (
+                            "Get More Done in Less Time"
+                        ),
+                    },
+                    {
+                        "type": "save_money",
+                        "headline": (
+                            "Keep More Money in Your Pocket"
+                        ),
+                    },
+                    {
+                        "type": "growth",
+                        "headline": (
+                            "Accelerate Your Personal and Business Growth"
+                        ),
+                    },
+                ]
+
             if "logo_text\n" in branding:
                 branding["logo_text"] = branding.pop(
                     "logo_text\n"
@@ -3307,6 +3582,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_buyer_motivation_variants(
+                profile
+            )
+
             _apply_selected_hero(
                 profile
             )
@@ -3352,6 +3631,10 @@ Use this exact JSON structure:
             )
 
             _apply_selected_emotional_trigger(
+                profile
+            )
+
+            _apply_selected_buyer_motivation(
                 profile
             )
 
@@ -3403,6 +3686,9 @@ Use this exact JSON structure:
                 ),
                 selected_emotional_trigger_type=profile.get(
                     "selected_emotional_trigger_type",
+                ),
+                selected_buyer_motivation_type=profile.get(
+                    "selected_buyer_motivation_type",
                 ),
                 cta=profile.get(
                     "cta",
