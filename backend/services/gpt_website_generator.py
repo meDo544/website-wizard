@@ -340,6 +340,39 @@ VALUE_PROP_TYPE_ALIASES = {
     "outcomes": "results",
 }
 
+AUDIENCE_STRATEGY_MAP = {
+    "restaurant": ["consumer", "premium", "beginner"],
+    "saas": ["professional", "enterprise", "small_business"],
+    "consultant": ["professional", "small_business", "premium"],
+    "contractor": ["consumer", "small_business", "premium"],
+    "agency": ["small_business", "enterprise", "professional"],
+    "medical": ["consumer", "premium", "professional"],
+    "general": ["consumer"],
+}
+
+AUDIENCE_FALLBACK_ORDER = [
+    "consumer",
+    "professional",
+    "small_business",
+    "enterprise",
+    "premium",
+    "beginner",
+    "general",
+]
+
+AUDIENCE_TYPE_ALIASES = {
+    "starter": "beginner",
+    "newbie": "beginner",
+    "business": "small_business",
+    "smb": "small_business",
+    "corporate": "enterprise",
+    "company": "enterprise",
+    "expert": "professional",
+    "pro": "professional",
+    "luxury": "premium",
+    "high_end": "premium",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -806,6 +839,56 @@ def _normalize_value_prop_variants(
         "value_prop_variants"
     ] = normalized_variants
 
+def _normalize_audience_variants(
+    profile: dict[str, Any],
+) -> None:
+
+    variants = profile.get(
+        "audience_variants",
+        [],
+    )
+
+    if not isinstance(
+        variants,
+        list,
+    ):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        audience_type = (
+            normalize_audience_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if headline:
+            normalized_variants.append(
+                {
+                    "type": audience_type,
+                    "headline": headline,
+                }
+            )
+
+    profile[
+        "audience_variants"
+    ] = normalized_variants
+
 def normalize_cta_type(cta_type: str | None) -> str:
     if not cta_type:
         return "general"
@@ -949,6 +1032,26 @@ def normalize_value_prop_type(
     )
 
     return VALUE_PROP_TYPE_ALIASES.get(
+        normalized,
+        normalized,
+    )
+
+def normalize_audience_type(
+    audience_type: str | None,
+) -> str:
+
+    if not audience_type:
+        return "general"
+
+    normalized = (
+        str(audience_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return AUDIENCE_TYPE_ALIASES.get(
         normalized,
         normalized,
     )
@@ -1537,6 +1640,89 @@ def select_value_prop_variant(
         ),
     }
 
+def select_audience_variant(
+    audience_variants: list[dict],
+    conversion_strategy: str | None = None,
+) -> dict:
+
+    strategy = normalize_audience_type(
+        conversion_strategy
+    )
+
+    preferred_order = (
+        AUDIENCE_STRATEGY_MAP.get(
+            strategy,
+            AUDIENCE_STRATEGY_MAP[
+                "general"
+            ],
+        )
+    )
+
+    normalized_variants = []
+
+    for variant in (
+        audience_variants or []
+    ):
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        audience_type = (
+            normalize_audience_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if not headline:
+            continue
+
+        normalized_variants.append(
+            {
+                **variant,
+                "type": audience_type,
+                "headline": headline,
+            }
+        )
+
+    for preferred_type in preferred_order:
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == preferred_type
+            ):
+                return variant
+
+    for fallback_type in (
+        AUDIENCE_FALLBACK_ORDER
+    ):
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == fallback_type
+            ):
+                return variant
+
+    return {
+        "type": "consumer",
+        "headline": (
+            "Designed for Everyday Customers"
+        ),
+    }
+
 def _apply_selected_hero(
     profile: dict[str, Any],
 ) -> None:
@@ -1780,6 +1966,31 @@ def _apply_selected_value_prop(
     profile[
         "selected_value_prop"
     ] = selected_value_prop
+
+def _apply_selected_audience(
+    profile: dict[str, Any],
+) -> None:
+
+    selected_audience = (
+        select_audience_variant(
+            audience_variants=profile.get(
+                "audience_variants",
+                [],
+            ),
+            conversion_strategy=profile.get(
+                "conversion_strategy",
+                "general",
+            ),
+        )
+    )
+
+    profile[
+        "selected_audience_type"
+    ] = selected_audience["type"]
+
+    profile[
+        "selected_audience"
+    ] = selected_audience
 
 def generate_business_profile(
     *,
@@ -2059,6 +2270,31 @@ Each value proposition variant must contain:
 
 Also generate:
 
+audience_variants
+
+audience_variants is REQUIRED.
+
+Generate at least 3 audience variants.
+
+Valid audience types:
+
+- beginner
+- professional
+- enterprise
+- small_business
+- consumer
+- premium
+- general
+
+Each audience variant must contain:
+
+{
+  "type": "",
+  "headline": ""
+}
+
+Also generate:
+
 selected_hero_type
 
 Choose the hero most likely to convert for the business.
@@ -2256,6 +2492,21 @@ Use this exact JSON structure:
     }
   ],
 
+  "audience_variants": [
+    {
+      "type": "consumer",
+      "headline": "Perfect for Everyday Customers"
+    },
+    {
+      "type": "professional",
+      "headline": "Built for Professionals"
+    },
+    {
+      "type": "small_business",
+      "headline": "Designed for Growing Businesses"
+    }
+  ],
+
   "conversion_strategy": "general",
 
   "section_order": [
@@ -2427,6 +2678,22 @@ Use this exact JSON structure:
                     },
                 ]
 
+            if not profile.get("audience_variants"):
+                profile["audience_variants"] = [
+                    {
+                        "type": "consumer",
+                        "headline": "Perfect for Everyday Customers",
+                    },
+                    {
+                        "type": "professional",
+                        "headline": "Built for Professionals",
+                    },
+                    {
+                        "type": "small_business",
+                        "headline": "Designed for Growing Businesses",
+                    },
+                 ]
+
             if "logo_text\n" in branding:
                 branding["logo_text"] = branding.pop(
                     "logo_text\n"
@@ -2469,12 +2736,19 @@ Use this exact JSON structure:
             _normalize_urgency_variants(
                 profile
             )
+
             _normalize_objection_variants(
                 profile
             )
+
             _normalize_value_prop_variants(
                 profile
             )
+
+            _normalize_audience_variants(
+                profile
+            )
+
             _apply_selected_hero(
                 profile
             )
@@ -2508,6 +2782,10 @@ Use this exact JSON structure:
             )
 
             _apply_selected_value_prop(
+                profile
+            )
+
+            _apply_selected_audience(
                 profile
             )
 
@@ -2550,6 +2828,9 @@ Use this exact JSON structure:
                 ),
                 selected_value_prop_type=profile.get(
                     "selected_value_prop_type",
+                ),
+                selected_audience_type=profile.get(
+                    "selected_audience_type",
                 ),
                 cta=profile.get(
                     "cta",
