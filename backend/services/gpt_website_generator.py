@@ -373,6 +373,41 @@ AUDIENCE_TYPE_ALIASES = {
     "high_end": "premium",
 }
 
+DIFFERENTIATION_STRATEGY_MAP = {
+    "restaurant": ["quality", "service", "customization"],
+    "saas": ["innovation", "speed", "customization"],
+    "consultant": ["expertise", "service", "customization"],
+    "contractor": ["quality", "service", "price"],
+    "agency": ["innovation", "expertise", "customization"],
+    "medical": ["expertise", "quality", "service"],
+    "general": ["quality"],
+}
+
+DIFFERENTIATION_FALLBACK_ORDER = [
+    "quality",
+    "innovation",
+    "service",
+    "expertise",
+    "speed",
+    "price",
+    "customization",
+    "general",
+]
+
+DIFFERENTIATION_TYPE_ALIASES = {
+    "premium": "quality",
+    "advanced": "innovation",
+    "technology": "innovation",
+    "support": "service",
+    "customer_service": "service",
+    "specialist": "expertise",
+    "professional": "expertise",
+    "fast": "speed",
+    "affordable": "price",
+    "personalized": "customization",
+    "tailored": "customization",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -889,6 +924,56 @@ def _normalize_audience_variants(
         "audience_variants"
     ] = normalized_variants
 
+def _normalize_differentiation_variants(
+    profile: dict[str, Any],
+) -> None:
+
+    variants = profile.get(
+        "differentiation_variants",
+        [],
+    )
+
+    if not isinstance(
+        variants,
+        list,
+    ):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        differentiation_type = (
+            normalize_differentiation_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if headline:
+            normalized_variants.append(
+                {
+                    "type": differentiation_type,
+                    "headline": headline,
+                }
+            )
+
+    profile[
+        "differentiation_variants"
+    ] = normalized_variants
+
 def normalize_cta_type(cta_type: str | None) -> str:
     if not cta_type:
         return "general"
@@ -1052,6 +1137,26 @@ def normalize_audience_type(
     )
 
     return AUDIENCE_TYPE_ALIASES.get(
+        normalized,
+        normalized,
+    )
+
+def normalize_differentiation_type(
+    differentiation_type: str | None,
+) -> str:
+
+    if not differentiation_type:
+        return "general"
+
+    normalized = (
+        str(differentiation_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return DIFFERENTIATION_TYPE_ALIASES.get(
         normalized,
         normalized,
     )
@@ -1723,6 +1828,89 @@ def select_audience_variant(
         ),
     }
 
+def select_differentiation_variant(
+    differentiation_variants: list[dict],
+    conversion_strategy: str | None = None,
+) -> dict:
+
+    strategy = normalize_differentiation_type(
+        conversion_strategy
+    )
+
+    preferred_order = (
+        DIFFERENTIATION_STRATEGY_MAP.get(
+            strategy,
+            DIFFERENTIATION_STRATEGY_MAP[
+                "general"
+            ],
+        )
+    )
+
+    normalized_variants = []
+
+    for variant in (
+        differentiation_variants or []
+    ):
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        differentiation_type = (
+            normalize_differentiation_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if not headline:
+            continue
+
+        normalized_variants.append(
+            {
+                **variant,
+                "type": differentiation_type,
+                "headline": headline,
+            }
+        )
+
+    for preferred_type in preferred_order:
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == preferred_type
+            ):
+                return variant
+
+    for fallback_type in (
+        DIFFERENTIATION_FALLBACK_ORDER
+    ):
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == fallback_type
+            ):
+                return variant
+
+    return {
+        "type": "quality",
+        "headline": (
+            "Higher Quality Than Typical Alternatives"
+        ),
+    }
+
 def _apply_selected_hero(
     profile: dict[str, Any],
 ) -> None:
@@ -1991,6 +2179,31 @@ def _apply_selected_audience(
     profile[
         "selected_audience"
     ] = selected_audience
+
+def _apply_selected_differentiation(
+    profile: dict[str, Any],
+) -> None:
+
+    selected_differentiation = (
+        select_differentiation_variant(
+            differentiation_variants=profile.get(
+                "differentiation_variants",
+                [],
+            ),
+            conversion_strategy=profile.get(
+                "conversion_strategy",
+                "general",
+            ),
+        )
+    )
+
+    profile[
+        "selected_differentiation_type"
+    ] = selected_differentiation["type"]
+
+    profile[
+        "selected_differentiation"
+    ] = selected_differentiation
 
 def generate_business_profile(
     *,
@@ -2295,6 +2508,32 @@ Each audience variant must contain:
 
 Also generate:
 
+differentiation_variants
+
+differentiation_variants is REQUIRED.
+
+Generate at least 3 differentiation variants.
+
+Valid differentiation types:
+
+- quality
+- innovation
+- service
+- speed
+- price
+- expertise
+- customization
+- general
+
+Each differentiation variant must contain:
+
+{
+  "type": "",
+  "headline": ""
+}
+
+Also generate:
+
 selected_hero_type
 
 Choose the hero most likely to convert for the business.
@@ -2504,6 +2743,21 @@ Use this exact JSON structure:
     {
       "type": "small_business",
       "headline": "Designed for Growing Businesses"
+    }
+  ],
+
+  "differentiation_variants": [
+    {
+      "type": "quality",
+      "headline": "Higher Quality Than Typical Alternatives"
+    },
+    {
+      "type": "innovation",
+      "headline": "Advanced Technology That Sets Us Apart"
+    },
+    {
+      "type": "service",
+      "headline": "Personalized Support Every Step of the Way"
     }
   ],
 
@@ -2749,6 +3003,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_differentiation_variants(
+                profile
+            )
+
             _apply_selected_hero(
                 profile
             )
@@ -2789,6 +3047,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _apply_selected_differentiation(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -2825,6 +3087,9 @@ Use this exact JSON structure:
                 ),
                 selected_objection_type=profile.get(
                     "selected_objection_type",
+                ),
+                selected_differentiation_type=profile.get(
+                    "selected_differentiation_type",
                 ),
                 selected_value_prop_type=profile.get(
                     "selected_value_prop_type",
