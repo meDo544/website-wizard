@@ -408,6 +408,39 @@ DIFFERENTIATION_TYPE_ALIASES = {
     "tailored": "customization",
 }
 
+EMOTIONAL_TRIGGER_STRATEGY_MAP = {
+    "restaurant": ["belonging", "aspiration", "confidence"],
+    "saas": ["achievement", "aspiration", "confidence"],
+    "consultant": ["confidence", "security", "achievement"],
+    "contractor": ["security", "confidence", "belonging"],
+    "agency": ["aspiration", "achievement", "status"],
+    "medical": ["security", "confidence", "belonging"],
+    "general": ["aspiration"],
+}
+
+EMOTIONAL_TRIGGER_FALLBACK_ORDER = [
+    "aspiration",
+    "security",
+    "confidence",
+    "achievement",
+    "status",
+    "belonging",
+    "fear_of_missing_out",
+    "general",
+]
+
+EMOTIONAL_TRIGGER_TYPE_ALIASES = {
+    "fomo": "fear_of_missing_out",
+    "trust": "confidence",
+    "safe": "security",
+    "safety": "security",
+    "success": "achievement",
+    "winning": "achievement",
+    "prestige": "status",
+    "community": "belonging",
+    "dream": "aspiration",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -974,6 +1007,56 @@ def _normalize_differentiation_variants(
         "differentiation_variants"
     ] = normalized_variants
 
+def _normalize_emotional_trigger_variants(
+    profile: dict[str, Any],
+) -> None:
+
+    variants = profile.get(
+        "emotional_trigger_variants",
+        [],
+    )
+
+    if not isinstance(
+        variants,
+        list,
+    ):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        emotional_trigger_type = (
+            normalize_emotional_trigger_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if headline:
+            normalized_variants.append(
+                {
+                    "type": emotional_trigger_type,
+                    "headline": headline,
+                }
+            )
+
+    profile[
+        "emotional_trigger_variants"
+    ] = normalized_variants
+
 def normalize_cta_type(cta_type: str | None) -> str:
     if not cta_type:
         return "general"
@@ -1157,6 +1240,26 @@ def normalize_differentiation_type(
     )
 
     return DIFFERENTIATION_TYPE_ALIASES.get(
+        normalized,
+        normalized,
+    )
+
+def normalize_emotional_trigger_type(
+    emotional_trigger_type: str | None,
+) -> str:
+
+    if not emotional_trigger_type:
+        return "general"
+
+    normalized = (
+        str(emotional_trigger_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return EMOTIONAL_TRIGGER_TYPE_ALIASES.get(
         normalized,
         normalized,
     )
@@ -1911,6 +2014,89 @@ def select_differentiation_variant(
         ),
     }
 
+def select_emotional_trigger_variant(
+    emotional_trigger_variants: list[dict],
+    conversion_strategy: str | None = None,
+) -> dict:
+
+    strategy = normalize_emotional_trigger_type(
+        conversion_strategy
+    )
+
+    preferred_order = (
+        EMOTIONAL_TRIGGER_STRATEGY_MAP.get(
+            strategy,
+            EMOTIONAL_TRIGGER_STRATEGY_MAP[
+                "general"
+            ],
+        )
+    )
+
+    normalized_variants = []
+
+    for variant in (
+        emotional_trigger_variants or []
+    ):
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        emotional_trigger_type = (
+            normalize_emotional_trigger_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if not headline:
+            continue
+
+        normalized_variants.append(
+            {
+                **variant,
+                "type": emotional_trigger_type,
+                "headline": headline,
+            }
+        )
+
+    for preferred_type in preferred_order:
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == preferred_type
+            ):
+                return variant
+
+    for fallback_type in (
+        EMOTIONAL_TRIGGER_FALLBACK_ORDER
+    ):
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == fallback_type
+            ):
+                return variant
+
+    return {
+        "type": "aspiration",
+        "headline": (
+            "Achieve More With Less Effort"
+        ),
+    }
+
 def _apply_selected_hero(
     profile: dict[str, Any],
 ) -> None:
@@ -2204,6 +2390,31 @@ def _apply_selected_differentiation(
     profile[
         "selected_differentiation"
     ] = selected_differentiation
+
+def _apply_selected_emotional_trigger(
+    profile: dict[str, Any],
+) -> None:
+
+    selected_emotional_trigger = (
+        select_emotional_trigger_variant(
+            emotional_trigger_variants=profile.get(
+                "emotional_trigger_variants",
+                [],
+            ),
+            conversion_strategy=profile.get(
+                "conversion_strategy",
+                "general",
+            ),
+        )
+    )
+
+    profile[
+        "selected_emotional_trigger_type"
+    ] = selected_emotional_trigger["type"]
+
+    profile[
+        "selected_emotional_trigger"
+    ] = selected_emotional_trigger
 
 def generate_business_profile(
     *,
@@ -2534,6 +2745,32 @@ Each differentiation variant must contain:
 
 Also generate:
 
+emotional_trigger_variants
+
+emotional_trigger_variants is REQUIRED.
+
+Generate at least 3 emotional trigger variants.
+
+Valid emotional trigger types:
+
+- aspiration
+- security
+- status
+- belonging
+- achievement
+- fear_of_missing_out
+- confidence
+- general
+
+Each emotional trigger variant must contain:
+
+{
+  "type": "",
+  "headline": ""
+}
+
+Also generate:
+
 selected_hero_type
 
 Choose the hero most likely to convert for the business.
@@ -2761,6 +2998,21 @@ Use this exact JSON structure:
     }
   ],
 
+  "emotional_trigger_variants": [
+    {
+      "type": "aspiration",
+      "headline": "Achieve More With Less Effort"
+    },
+    {
+      "type": "security",
+      "headline": "Feel Confident in Every Purchase"
+    },
+    {
+      "type": "status",
+      "headline": "Stand Out With Premium Solutions"
+    }
+  ],
+
   "conversion_strategy": "general",
 
   "section_order": [
@@ -2948,6 +3200,50 @@ Use this exact JSON structure:
                     },
                  ]
 
+            if not profile.get("differentiation_variants"):
+                profile["differentiation_variants"] = [
+                    {
+                        "type": "quality",
+                        "headline": (
+                            "Higher Quality Than Typical Alternatives"
+                        ),
+                    },
+                    {
+                        "type": "innovation",
+                        "headline": (
+                            "Advanced Technology That Sets Us Apart"
+                        ),
+                    },
+                    {
+                        "type": "service",
+                        "headline": (
+                            "Personalized Support Every Step of the Way"
+                        ),
+                    },
+                 ]
+
+            if not profile.get("emotional_trigger_variants"):
+                profile["emotional_trigger_variants"] = [
+                    {
+                        "type": "aspiration",
+                        "headline": (
+                            "Achieve More With Less Effort"
+                        ),
+                    },
+                    {
+                        "type": "security",
+                        "headline": (
+                            "Feel Confident in Every Purchase"
+                        ),
+                    },
+                    {
+                        "type": "status",
+                        "headline": (
+                            "Stand Out With Premium Solutions"
+                        ),
+                    },
+                ]
+
             if "logo_text\n" in branding:
                 branding["logo_text"] = branding.pop(
                     "logo_text\n"
@@ -3007,6 +3303,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_emotional_trigger_variants(
+                profile
+            )
+
             _apply_selected_hero(
                 profile
             )
@@ -3048,6 +3348,10 @@ Use this exact JSON structure:
             )
 
             _apply_selected_differentiation(
+                profile
+            )
+
+            _apply_selected_emotional_trigger(
                 profile
             )
 
@@ -3096,6 +3400,9 @@ Use this exact JSON structure:
                 ),
                 selected_audience_type=profile.get(
                     "selected_audience_type",
+                ),
+                selected_emotional_trigger_type=profile.get(
+                    "selected_emotional_trigger_type",
                 ),
                 cta=profile.get(
                     "cta",
