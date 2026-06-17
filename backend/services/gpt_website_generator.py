@@ -511,6 +511,44 @@ PAIN_POINT_TYPE_ALIASES = {
     "unknown": "uncertainty",
 }
 
+OUTCOME_STRATEGY_MAP = {
+    "restaurant": ["simplicity", "freedom", "confidence"],
+    "saas": ["efficiency", "growth", "speed"],
+    "consultant": ["growth", "confidence", "profitability"],
+    "contractor": ["simplicity", "confidence", "freedom"],
+    "agency": ["growth", "profitability", "speed"],
+    "medical": ["confidence", "freedom", "simplicity"],
+    "general": ["growth"],
+}
+
+OUTCOME_FALLBACK_ORDER = [
+    "growth",
+    "efficiency",
+    "freedom",
+    "confidence",
+    "profitability",
+    "simplicity",
+    "speed",
+    "general",
+]
+
+OUTCOME_TYPE_ALIASES = {
+    "scale": "growth",
+    "scaling": "growth",
+    "productivity": "efficiency",
+    "performance": "efficiency",
+    "independence": "freedom",
+    "peace_of_mind": "freedom",
+    "certainty": "confidence",
+    "assurance": "confidence",
+    "revenue": "profitability",
+    "income": "profitability",
+    "easy": "simplicity",
+    "ease": "simplicity",
+    "fast": "speed",
+    "quick": "speed",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -1227,6 +1265,56 @@ def _normalize_pain_point_variants(
         "pain_point_variants"
     ] = normalized_variants
 
+def _normalize_outcome_variants(
+    profile: dict[str, Any],
+) -> None:
+
+    variants = profile.get(
+        "outcome_variants",
+        [],
+    )
+
+    if not isinstance(
+        variants,
+        list,
+    ):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        outcome_type = (
+            normalize_outcome_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if headline:
+            normalized_variants.append(
+                {
+                    "type": outcome_type,
+                    "headline": headline,
+                }
+            )
+
+    profile[
+        "outcome_variants"
+    ] = normalized_variants
+
 def normalize_cta_type(cta_type: str | None) -> str:
     if not cta_type:
         return "general"
@@ -1470,6 +1558,26 @@ def normalize_pain_point_type(
     )
 
     return PAIN_POINT_TYPE_ALIASES.get(
+        normalized,
+        normalized,
+    )
+
+def normalize_outcome_type(
+    outcome_type: str | None,
+) -> str:
+
+    if not outcome_type:
+        return "general"
+
+    normalized = (
+        str(outcome_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return OUTCOME_TYPE_ALIASES.get(
         normalized,
         normalized,
     )
@@ -2473,6 +2581,89 @@ def select_pain_point_variant(
         ),
     }
 
+def select_outcome_variant(
+    outcome_variants: list[dict],
+    conversion_strategy: str | None = None,
+) -> dict:
+
+    strategy = normalize_outcome_type(
+        conversion_strategy
+    )
+
+    preferred_order = (
+        OUTCOME_STRATEGY_MAP.get(
+            strategy,
+            OUTCOME_STRATEGY_MAP[
+                "general"
+            ],
+        )
+    )
+
+    normalized_variants = []
+
+    for variant in (
+        outcome_variants or []
+    ):
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        outcome_type = (
+            normalize_outcome_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if not headline:
+            continue
+
+        normalized_variants.append(
+            {
+                **variant,
+                "type": outcome_type,
+                "headline": headline,
+            }
+        )
+
+    for preferred_type in preferred_order:
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == preferred_type
+            ):
+                return variant
+
+    for fallback_type in (
+        OUTCOME_FALLBACK_ORDER
+    ):
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == fallback_type
+            ):
+                return variant
+
+    return {
+        "type": "growth",
+        "headline": (
+            "Accelerate Your Business Growth"
+        ),
+    }
+
 def _apply_selected_hero(
     profile: dict[str, Any],
 ) -> None:
@@ -2841,6 +3032,31 @@ def _apply_selected_pain_point(
     profile[
         "selected_pain_point"
     ] = selected_pain_point
+
+def _apply_selected_outcome(
+    profile: dict[str, Any],
+) -> None:
+
+    selected_outcome = (
+        select_outcome_variant(
+            outcome_variants=profile.get(
+                "outcome_variants",
+                [],
+            ),
+            conversion_strategy=profile.get(
+                "conversion_strategy",
+                "general",
+            ),
+        )
+    )
+
+    profile[
+        "selected_outcome_type"
+    ] = selected_outcome["type"]
+
+    profile[
+        "selected_outcome"
+    ] = selected_outcome
 
 def generate_business_profile(
     *,
@@ -3249,6 +3465,32 @@ Each pain point variant must contain:
 
 Also generate:
 
+outcome_variants
+
+outcome_variants is REQUIRED.
+
+Generate at least 3 outcome variants.
+
+Valid outcome types:
+
+- growth
+- efficiency
+- freedom
+- confidence
+- profitability
+- simplicity
+- speed
+- general
+
+Each outcome variant must contain:
+
+{
+  "type": "",
+  "headline": ""
+}
+
+Also generate:
+
 selected_hero_type
 
 Choose the hero most likely to convert for the business.
@@ -3518,6 +3760,21 @@ Use this exact JSON structure:
     {
       "type": "risk",
       "headline": "Avoid Costly Mistakes"
+    }
+  ],
+
+  "outcome_variants": [
+    {
+      "type": "growth",
+      "headline": "Accelerate Your Business Growth"
+    },
+    {
+      "type": "efficiency",
+      "headline": "Get More Done With Less Effort"
+    },
+    {
+      "type": "confidence",
+      "headline": "Make Decisions With Confidence"
     }
   ],
 
@@ -3796,6 +4053,28 @@ Use this exact JSON structure:
                     },
                 ]
 
+            if not profile.get("outcome_variants"):
+                profile["outcome_variants"] = [
+                    {
+                        "type": "growth",
+                        "headline": (
+                            "Accelerate Your Business Growth"
+                        ),
+                    },
+                    {
+                        "type": "efficiency",
+                        "headline": (
+                            "Get More Done With Less Effort"
+                        ),
+                    },
+                    {
+                        "type": "confidence",
+                        "headline": (
+                            "Make Decisions With Confidence"
+                        ),
+                    },
+                ]
+
             if "logo_text\n" in branding:
                 branding["logo_text"] = branding.pop(
                     "logo_text\n"
@@ -3867,6 +4146,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_outcome_variants(
+                profile
+            )
+
             _apply_selected_hero(
                 profile
             )
@@ -3920,6 +4203,10 @@ Use this exact JSON structure:
             )
 
             _apply_selected_pain_point(
+                profile
+            )
+
+            _apply_selected_outcome(
                 profile
             )
 
@@ -3977,6 +4264,9 @@ Use this exact JSON structure:
                 ),
                 selected_pain_point_type=profile.get(
                     "selected_pain_point_type",
+                ),
+                selected_outcome_type=profile.get(
+                    "selected_outcome_type",
                 ),
                 cta=profile.get(
                     "cta",
