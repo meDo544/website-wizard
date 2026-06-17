@@ -587,6 +587,48 @@ AUTHORITY_TYPE_ALIASES = {
     "reputation": "credibility",
 }
 
+INDUSTRY_CONVERSION_STRATEGY_MAP = {
+    "restaurant": ["restaurant", "local", "consumer"],
+    "saas": ["saas", "technology", "business"],
+    "consultant": ["consultant", "professional", "business"],
+    "contractor": ["contractor", "local", "trust"],
+    "agency": ["agency", "creative", "business"],
+    "medical": ["medical", "trust", "local"],
+    "general": ["general"],
+}
+
+INDUSTRY_CONVERSION_FALLBACK_ORDER = [
+    "restaurant",
+    "saas",
+    "consultant",
+    "contractor",
+    "agency",
+    "medical",
+    "ecommerce",
+    "technology",
+    "professional",
+    "business",
+    "creative",
+    "local",
+    "consumer",
+    "trust",
+    "general",
+]
+
+INDUSTRY_CONVERSION_TYPE_ALIASES = {
+    "software": "saas",
+    "tech": "technology",
+    "online_store": "ecommerce",
+    "shop": "ecommerce",
+    "retail": "ecommerce",
+    "service_business": "professional",
+    "small_business": "business",
+    "nearby": "local",
+    "community": "local",
+    "customer": "consumer",
+    "credibility": "trust",
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -1403,6 +1445,56 @@ def _normalize_authority_variants(
         "authority_variants"
     ] = normalized_variants
 
+def _normalize_industry_conversion_variants(
+    profile: dict[str, Any],
+) -> None:
+
+    variants = profile.get(
+        "industry_conversion_variants",
+        [],
+    )
+
+    if not isinstance(
+        variants,
+        list,
+    ):
+        variants = []
+
+    normalized_variants = []
+
+    for variant in variants:
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        industry_type = (
+            normalize_industry_conversion_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if headline:
+            normalized_variants.append(
+                {
+                    "type": industry_type,
+                    "headline": headline,
+                }
+            )
+
+    profile[
+        "industry_conversion_variants"
+    ] = normalized_variants
+
 def normalize_cta_type(cta_type: str | None) -> str:
     if not cta_type:
         return "general"
@@ -1686,6 +1778,26 @@ def normalize_authority_type(
     )
 
     return AUTHORITY_TYPE_ALIASES.get(
+        normalized,
+        normalized,
+    )
+
+def normalize_industry_conversion_type(
+    industry_conversion_type: str | None,
+) -> str:
+
+    if not industry_conversion_type:
+        return "general"
+
+    normalized = (
+        str(industry_conversion_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return INDUSTRY_CONVERSION_TYPE_ALIASES.get(
         normalized,
         normalized,
     )
@@ -2855,6 +2967,91 @@ def select_authority_variant(
         ),
     }
 
+def select_industry_conversion_variant(
+    industry_conversion_variants: list[dict],
+    conversion_strategy: str | None = None,
+) -> dict:
+
+    strategy = (
+        normalize_industry_conversion_type(
+            conversion_strategy
+        )
+    )
+
+    preferred_order = (
+        INDUSTRY_CONVERSION_STRATEGY_MAP.get(
+            strategy,
+            INDUSTRY_CONVERSION_STRATEGY_MAP[
+                "general"
+            ],
+        )
+    )
+
+    normalized_variants = []
+
+    for variant in (
+        industry_conversion_variants or []
+    ):
+
+        if not isinstance(
+            variant,
+            dict,
+        ):
+            continue
+
+        industry_type = (
+            normalize_industry_conversion_type(
+                variant.get("type")
+            )
+        )
+
+        headline = str(
+            variant.get(
+                "headline",
+                "",
+            )
+        ).strip()
+
+        if not headline:
+            continue
+
+        normalized_variants.append(
+            {
+                **variant,
+                "type": industry_type,
+                "headline": headline,
+            }
+        )
+
+    for preferred_type in preferred_order:
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == preferred_type
+            ):
+                return variant
+
+    for fallback_type in (
+        INDUSTRY_CONVERSION_FALLBACK_ORDER
+    ):
+
+        for variant in normalized_variants:
+
+            if (
+                variant["type"]
+                == fallback_type
+            ):
+                return variant
+
+    return {
+        "type": "general",
+        "headline": (
+            "Optimized for High-Converting Businesses"
+        ),
+    }
+
 def _apply_selected_hero(
     profile: dict[str, Any],
 ) -> None:
@@ -3273,6 +3470,31 @@ def _apply_selected_authority(
     profile[
         "selected_authority"
     ] = selected_authority
+
+def _apply_selected_industry_conversion(
+    profile: dict[str, Any],
+) -> None:
+
+    selected_industry_conversion = (
+        select_industry_conversion_variant(
+            industry_conversion_variants=profile.get(
+                "industry_conversion_variants",
+                [],
+            ),
+            conversion_strategy=profile.get(
+                "conversion_strategy",
+                "general",
+            ),
+        )
+    )
+
+    profile[
+        "selected_industry_conversion_type"
+    ] = selected_industry_conversion["type"]
+
+    profile[
+        "selected_industry_conversion"
+    ] = selected_industry_conversion
 
 def generate_business_profile(
     *,
@@ -3733,6 +3955,32 @@ Each authority variant must contain:
 
 Also generate:
 
+industry_conversion_variants
+
+industry_conversion_variants is REQUIRED.
+
+Generate at least 3 industry conversion variants.
+
+Valid industry conversion types:
+
+- restaurant
+- saas
+- consultant
+- contractor
+- agency
+- medical
+- ecommerce
+- general
+
+Each industry conversion variant must contain:
+
+{
+  "type": "",
+  "headline": ""
+}
+
+Also generate:
+
 selected_hero_type
 
 Choose the hero most likely to convert for the business.
@@ -4032,6 +4280,21 @@ Use this exact JSON structure:
     {
       "type": "innovation",
       "headline": "Leading the Industry Through Innovation"
+    }
+  ],
+
+  "industry_conversion_variants": [
+    {
+      "type": "saas",
+      "headline": "Built for Fast-Growing SaaS Companies"
+    },
+    {
+      "type": "ecommerce",
+      "headline": "Optimized for High-Converting Online Stores"
+    },
+    {
+      "type": "agency",
+      "headline": "Designed for Agencies Scaling Client Results"
     }
   ],
 
@@ -4354,6 +4617,32 @@ Use this exact JSON structure:
                     },
                 ]
 
+            if not profile.get(
+                "industry_conversion_variants"
+            ):
+                profile[
+                    "industry_conversion_variants"
+                ] = [
+                    {
+                        "type": "saas",
+                        "headline": (
+                            "Built for Fast-Growing SaaS Companies"
+                        ),
+                    },
+                    {
+                        "type": "ecommerce",
+                        "headline": (
+                            "Optimized for High-Converting Online Stores"
+                        ),
+                    },
+                    {
+                        "type": "agency",
+                        "headline": (
+                            "Designed for Agencies Scaling Client Results"
+                        ),
+                    },
+                ]
+
             if "logo_text\n" in branding:
                 branding["logo_text"] = branding.pop(
                     "logo_text\n"
@@ -4433,6 +4722,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_industry_conversion_variants(
+                profile
+            )
+
             _apply_selected_hero(
                 profile
             )
@@ -4497,6 +4790,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _apply_selected_industry_conversion(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -4557,6 +4854,9 @@ Use this exact JSON structure:
                 ),
                 selected_authority_type=profile.get(
                     "selected_authority_type",
+                ),
+                selected_industry_conversion_type=profile.get(
+                    "selected_industry_conversion_type",
                 ),
                 cta=profile.get(
                     "cta",
