@@ -629,6 +629,46 @@ INDUSTRY_CONVERSION_TYPE_ALIASES = {
     "credibility": "trust",
 }
 
+CONVERSION_SCORE_FIELDS = [
+    "selected_hero_type",
+    "selected_cta_type",
+    "selected_offer_type",
+    "selected_trust_type",
+    "selected_social_proof_type",
+    "selected_risk_reversal_type",
+    "selected_urgency_type",
+    "selected_objection_type",
+    "selected_value_prop_type",
+    "selected_audience_type",
+    "selected_differentiation_type",
+    "selected_emotional_trigger_type",
+    "selected_buyer_motivation_type",
+    "selected_pain_point_type",
+    "selected_outcome_type",
+    "selected_authority_type",
+    "selected_industry_conversion_type",
+]
+
+CONVERSION_SCORE_WEIGHTS = {
+    "selected_hero_type": 10,
+    "selected_cta_type": 10,
+    "selected_offer_type": 8,
+    "selected_trust_type": 8,
+    "selected_social_proof_type": 7,
+    "selected_risk_reversal_type": 7,
+    "selected_urgency_type": 7,
+    "selected_objection_type": 7,
+    "selected_value_prop_type": 10,
+    "selected_audience_type": 6,
+    "selected_differentiation_type": 7,
+    "selected_emotional_trigger_type": 6,
+    "selected_buyer_motivation_type": 6,
+    "selected_pain_point_type": 6,
+    "selected_outcome_type": 8,
+    "selected_authority_type": 7,
+    "selected_industry_conversion_type": 5,
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -3496,6 +3536,50 @@ def _apply_selected_industry_conversion(
         "selected_industry_conversion"
     ] = selected_industry_conversion
 
+def _calculate_conversion_score(
+    profile: dict[str, Any],
+) -> None:
+
+    breakdown = {}
+    total_score = 0
+
+    for field in CONVERSION_SCORE_FIELDS:
+
+        weight = (
+            CONVERSION_SCORE_WEIGHTS.get(
+                field,
+                0,
+            )
+        )
+
+        value = profile.get(field)
+
+        score = (
+            weight
+            if value
+            else 0
+        )
+
+        breakdown[
+            field.replace(
+                "selected_",
+                "",
+            ).replace(
+                "_type",
+                "",
+            )
+        ] = score
+
+        total_score += score
+
+    profile[
+        "conversion_score_breakdown"
+    ] = breakdown
+
+    profile[
+        "conversion_score"
+    ] = total_score
+
 def generate_business_profile(
     *,
     prompt: str,
@@ -4794,6 +4878,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _calculate_conversion_score(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -4857,6 +4945,9 @@ Use this exact JSON structure:
                 ),
                 selected_industry_conversion_type=profile.get(
                     "selected_industry_conversion_type",
+                ),
+                conversion_score=profile.get(
+                    "conversion_score",
                 ),
                 cta=profile.get(
                     "cta",
