@@ -669,6 +669,73 @@ CONVERSION_SCORE_WEIGHTS = {
     "selected_industry_conversion_type": 5,
 }
 
+QUALITY_SCORE_WEIGHTS = {
+    "hero_quality": 10,
+    "cta_quality": 10,
+    "offer_quality": 8,
+    "trust_quality": 8,
+    "emotional_impact": 8,
+    "clarity": 10,
+    "specificity": 10,
+    "authority_quality": 8,
+    "urgency_quality": 6,
+    "outcome_quality": 10,
+}
+
+QUALITY_KEYWORDS = {
+    "clarity": [
+        "easy",
+        "simple",
+        "clear",
+        "fast",
+        "trusted",
+        "secure",
+        "proven",
+    ],
+    "specificity": [
+        "free",
+        "custom",
+        "personalized",
+        "local",
+        "premium",
+        "expert",
+        "guarantee",
+    ],
+    "emotional": [
+        "confidence",
+        "success",
+        "growth",
+        "secure",
+        "effortless",
+        "stand out",
+        "achieve",
+    ],
+    "authority": [
+        "trusted",
+        "expert",
+        "proven",
+        "certified",
+        "experienced",
+        "leading",
+    ],
+    "urgency": [
+        "today",
+        "now",
+        "limited",
+        "soon",
+        "exclusive",
+        "available",
+    ],
+    "outcome": [
+        "growth",
+        "save",
+        "increase",
+        "improve",
+        "transform",
+        "accelerate",
+    ],
+}
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -3140,6 +3207,11 @@ def _apply_selected_hero(
         profile["hero_title"] = selected_variant["title"]
         profile["hero_subtitle"] = selected_variant["subtitle"]
         profile["selected_hero_type"] = selected_type
+        profile["selected_hero"] = {
+            "type": selected_type,
+            "headline": selected_variant["title"],
+            "subheadline": selected_variant["subtitle"],
+        }
     else:
         profile.setdefault(
             "selected_hero_type",
@@ -3579,6 +3651,214 @@ def _calculate_conversion_score(
     profile[
         "conversion_score"
     ] = total_score
+
+def _keyword_score(
+    text: str,
+    keywords: list[str],
+    max_score: int,
+) -> int:
+
+    if not text:
+        return 0
+
+    text_lower = text.lower()
+
+    matches = sum(
+        1
+        for keyword in keywords
+        if keyword in text_lower
+    )
+
+    return min(
+        max_score,
+        matches,
+    )
+
+
+def _length_quality_score(
+    text: str,
+    max_score: int = 10,
+) -> int:
+
+    if not text:
+        return 0
+
+    length = len(
+        text.split()
+    )
+
+    if length < 3:
+        return 2
+
+    if length < 5:
+        return 5
+
+    if length < 8:
+        return 8
+
+    return max_score
+
+def _calculate_quality_score(
+    profile: dict[str, Any]
+) -> None:
+
+    hero_text = str(
+        profile.get(
+            "selected_hero",
+            {},
+        ).get(
+            "headline",
+            "",
+        )
+    )
+
+    cta_text = str(
+        profile.get(
+            "cta",
+            "",
+        )
+    )
+
+    offer_text = str(
+        profile.get(
+            "selected_offer",
+            {},
+        ).get(
+            "headline",
+            "",
+        )
+    )
+
+    trust_text = str(
+        profile.get(
+            "selected_trust",
+            {},
+        ).get(
+            "headline",
+            "",
+        )
+    )
+
+    authority_text = str(
+        profile.get(
+            "selected_authority",
+            {},
+        ).get(
+            "headline",
+            "",
+        )
+    )
+
+    urgency_text = str(
+        profile.get(
+            "selected_urgency",
+            {},
+        ).get(
+            "headline",
+            "",
+        )
+    )
+
+    outcome_text = str(
+        profile.get(
+            "selected_outcome",
+            {},
+        ).get(
+            "headline",
+            "",
+        )
+    )
+
+    breakdown = {
+        "hero": _length_quality_score(
+            hero_text,
+            10,
+        ),
+        "cta": _length_quality_score(
+            cta_text,
+            10,
+        ),
+        "offer": _length_quality_score(
+            offer_text,
+            8,
+        ),
+        "trust": _length_quality_score(
+            trust_text,
+            8,
+        ),
+        "emotional_impact": _keyword_score(
+            hero_text,
+            QUALITY_KEYWORDS[
+                "emotional"
+            ],
+            8,
+        ),
+        "clarity": _keyword_score(
+            hero_text,
+            QUALITY_KEYWORDS[
+                "clarity"
+            ],
+            10,
+        ),
+        "specificity": _keyword_score(
+            hero_text,
+            QUALITY_KEYWORDS[
+                "specificity"
+            ],
+            10,
+        ),
+        "authority": _keyword_score(
+            authority_text,
+            QUALITY_KEYWORDS[
+                "authority"
+            ],
+            8,
+        ),
+        "urgency": _keyword_score(
+            urgency_text,
+            QUALITY_KEYWORDS[
+                "urgency"
+            ],
+            6,
+        ),
+        "outcome": _keyword_score(
+            outcome_text,
+            QUALITY_KEYWORDS[
+                "outcome"
+            ],
+            10,
+        ),
+    }
+
+    quality_score = sum(
+        breakdown.values()
+    )
+
+    profile[
+        "quality_score_breakdown"
+    ] = breakdown
+
+    profile[
+        "quality_score"
+    ] = quality_score
+
+    conversion_score = int(
+        profile.get(
+            "conversion_score",
+            0,
+        )
+    )
+
+    overall_score = int(
+        (
+            conversion_score
+            + quality_score
+        ) / 2
+    )
+
+    profile[
+        "overall_score"
+    ] = overall_score
 
 def generate_business_profile(
     *,
@@ -4882,6 +5162,10 @@ Use this exact JSON structure:
                 profile
             )
 
+            _calculate_quality_score(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -4948,6 +5232,13 @@ Use this exact JSON structure:
                 ),
                 conversion_score=profile.get(
                     "conversion_score",
+                ),
+                quality_score=profile.get(
+                    "quality_score",
+                ),
+
+                overall_score=profile.get(
+                    "overall_score",
                 ),
                 cta=profile.get(
                     "cta",
