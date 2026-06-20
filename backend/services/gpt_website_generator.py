@@ -736,6 +736,43 @@ QUALITY_KEYWORDS = {
     ],
 }
 
+PERFORMANCE_TRACKING_FIELDS = {
+    "hero_type": "selected_hero_type",
+    "cta_type": "selected_cta_type",
+    "offer_type": "selected_offer_type",
+    "trust_type": "selected_trust_type",
+    "social_proof_type": "selected_social_proof_type",
+    "risk_reversal_type": "selected_risk_reversal_type",
+    "urgency_type": "selected_urgency_type",
+    "objection_type": "selected_objection_type",
+    "value_prop_type": "selected_value_prop_type",
+    "audience_type": "selected_audience_type",
+    "differentiation_type": "selected_differentiation_type",
+    "emotional_trigger_type": "selected_emotional_trigger_type",
+    "buyer_motivation_type": "selected_buyer_motivation_type",
+    "pain_point_type": "selected_pain_point_type",
+    "outcome_type": "selected_outcome_type",
+    "authority_type": "selected_authority_type",
+    "industry_conversion_type": "selected_industry_conversion_type",
+}
+
+def build_performance_tracking(website_data: dict) -> dict:
+    performance_tracking = {}
+
+    for output_field, source_field in PERFORMANCE_TRACKING_FIELDS.items():
+        selected_value = website_data.get(source_field)
+
+        if isinstance(selected_value, dict):
+            performance_tracking[output_field] = selected_value.get("type")
+        else:
+            performance_tracking[output_field] = selected_value
+
+    performance_tracking["conversion_score"] = website_data.get("conversion_score", 0)
+    performance_tracking["quality_score"] = website_data.get("quality_score", 0)
+    performance_tracking["overall_score"] = website_data.get("overall_score", 0)
+
+    return performance_tracking
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -5163,6 +5200,12 @@ Use this exact JSON structure:
             )
 
             _calculate_quality_score(
+                profile
+            )
+
+            profile[
+                "performance_tracking"
+            ] = build_performance_tracking(
                 profile
             )
 
