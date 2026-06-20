@@ -858,6 +858,68 @@ def build_conversion_prediction(
             ],
     }
 
+LEARNING_PROFILE_CONFIG = {
+    "model_version": "v1",
+    "default_sample_size": 1,
+}
+
+def build_learning_profile(
+    profile: dict[str, Any],
+) -> dict:
+
+    performance_tracking = profile.get(
+        "performance_tracking",
+        {},
+    )
+
+    return {
+        "industry": profile.get(
+            "business_type",
+            "general",
+        ),
+        "sample_size":
+            LEARNING_PROFILE_CONFIG[
+                "default_sample_size"
+            ],
+        "average_conversion_score":
+            int(
+                profile.get(
+                    "conversion_score",
+                    0,
+                )
+            ),
+        "average_quality_score":
+            int(
+                profile.get(
+                    "quality_score",
+                    0,
+                )
+            ),
+        "average_overall_score":
+            int(
+                profile.get(
+                    "overall_score",
+                    0,
+                )
+            ),
+        "top_hero_type":
+            performance_tracking.get(
+                "hero_type",
+            ),
+        "top_cta_type":
+            performance_tracking.get(
+                "cta_type",
+            ),
+        "top_offer_type":
+            performance_tracking.get(
+                "offer_type",
+            ),
+        "model_version":
+            LEARNING_PROFILE_CONFIG[
+                "model_version"
+            ],
+    }
+
 def _get_openai_model() -> str:
     return os.getenv(
         "OPENAI_MODEL",
@@ -5304,6 +5366,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "learning_profile"
+            ] = build_learning_profile(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -5394,6 +5462,15 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "prediction_confidence",
+                    )
+                ),
+
+                learning_profile_version=(
+                    profile.get(
+                        "learning_profile",
+                        {},
+                    ).get(
+                        "model_version",
                     )
                 ),
                 cta=profile.get(
