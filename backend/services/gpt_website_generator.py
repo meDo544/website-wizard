@@ -868,6 +868,11 @@ OPTIMIZATION_ENGINE_CONFIG = {
     "minimum_confidence": 0.50,
 }
 
+VARIANT_SELECTION_CONFIG = {
+    "model_version": "v1",
+    "selection_source": "optimization_engine",
+}
+
 def build_learning_profile(
     profile: dict[str, Any],
 ) -> dict:
@@ -968,6 +973,38 @@ def build_optimization_recommendation(
             ),
         "model_version":
             OPTIMIZATION_ENGINE_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_variant_selection_strategy(
+    profile: dict[str, Any],
+) -> dict:
+
+    optimization_recommendation = profile.get(
+        "optimization_recommendation",
+        {},
+    )
+
+    return {
+        "hero_type":
+            optimization_recommendation.get(
+                "recommended_hero_type",
+            ),
+        "cta_type":
+            optimization_recommendation.get(
+                "recommended_cta_type",
+            ),
+        "offer_type":
+            optimization_recommendation.get(
+                "recommended_offer_type",
+            ),
+        "selection_source":
+            VARIANT_SELECTION_CONFIG[
+                "selection_source"
+            ],
+        "model_version":
+            VARIANT_SELECTION_CONFIG[
                 "model_version"
             ],
     }
@@ -5430,6 +5467,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "variant_selection_strategy"
+            ] = build_variant_selection_strategy(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -5556,6 +5599,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "confidence",
+                    )
+                ),
+
+                selected_strategy_hero_type=(
+                    profile.get(
+                        "variant_selection_strategy",
+                        {},
+                    ).get(
+                        "hero_type",
+                    )
+                ),
+
+                selected_strategy_cta_type=(
+                    profile.get(
+                        "variant_selection_strategy",
+                        {},
+                    ).get(
+                        "cta_type",
+                    )
+                ),
+
+                selection_source=(
+                    profile.get(
+                        "variant_selection_strategy",
+                        {},
+                    ).get(
+                        "selection_source",
                     )
                 ),
                 cta=profile.get(
