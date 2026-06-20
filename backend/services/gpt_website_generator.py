@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import uuid
 from typing import Any
 
 import structlog
@@ -772,6 +773,15 @@ def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking["overall_score"] = website_data.get("overall_score", 0)
 
     return performance_tracking
+
+def build_ab_test_metadata() -> dict:
+    return {
+        "test_id": str(uuid.uuid4()),
+        "variant_id": "A",
+        "variant_group": "default",
+        "traffic_allocation": 50,
+        "status": "active",
+    }
 
 def _get_openai_model() -> str:
     return os.getenv(
@@ -5208,6 +5218,10 @@ Use this exact JSON structure:
             ] = build_performance_tracking(
                 profile
             )
+
+            profile[
+                "ab_testing"
+            ] = build_ab_test_metadata()
 
             metrics["status"] = "success"
 
