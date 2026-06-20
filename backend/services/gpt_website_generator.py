@@ -757,6 +757,13 @@ PERFORMANCE_TRACKING_FIELDS = {
     "industry_conversion_type": "selected_industry_conversion_type",
 }
 
+CONVERSION_PREDICTION_CONFIG = {
+    "model_version": "v1",
+    "max_conversion_rate": 0.15,
+    "confidence_floor": 0.50,
+    "confidence_ceiling": 0.95,
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -781,6 +788,74 @@ def build_ab_test_metadata() -> dict:
         "variant_group": "default",
         "traffic_allocation": 50,
         "status": "active",
+    }
+
+def build_conversion_prediction(
+    profile: dict[str, Any],
+) -> dict:
+
+    conversion_score = int(
+        profile.get(
+            "conversion_score",
+            0,
+        )
+    )
+
+    quality_score = int(
+        profile.get(
+            "quality_score",
+            0,
+        )
+    )
+
+    overall_score = int(
+        profile.get(
+            "overall_score",
+            0,
+        )
+    )
+
+    predicted_conversion_rate = round(
+        (
+            overall_score / 100
+        )
+        * CONVERSION_PREDICTION_CONFIG[
+            "max_conversion_rate"
+        ],
+        4,
+    )
+
+    confidence = (
+        conversion_score
+        + quality_score
+    ) / 200
+
+    confidence = max(
+        CONVERSION_PREDICTION_CONFIG[
+            "confidence_floor"
+        ],
+        confidence,
+    )
+
+    confidence = min(
+        CONVERSION_PREDICTION_CONFIG[
+            "confidence_ceiling"
+        ],
+        confidence,
+    )
+
+    return {
+        "predicted_conversion_rate":
+            predicted_conversion_rate,
+        "prediction_confidence":
+            round(
+                confidence,
+                2,
+            ),
+        "prediction_model_version":
+            CONVERSION_PREDICTION_CONFIG[
+                "model_version"
+            ],
     }
 
 def _get_openai_model() -> str:
@@ -5223,6 +5298,12 @@ Use this exact JSON structure:
                 "ab_testing"
             ] = build_ab_test_metadata()
 
+            profile[
+                "conversion_prediction"
+            ] = build_conversion_prediction(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -5296,6 +5377,24 @@ Use this exact JSON structure:
 
                 overall_score=profile.get(
                     "overall_score",
+                ),
+
+                predicted_conversion_rate=(
+                    profile.get(
+                        "conversion_prediction",
+                        {},
+                    ).get(
+                        "predicted_conversion_rate",
+                    )
+                ),
+
+                prediction_confidence=(
+                    profile.get(
+                        "conversion_prediction",
+                        {},
+                    ).get(
+                        "prediction_confidence",
+                    )
                 ),
                 cta=profile.get(
                     "cta",
