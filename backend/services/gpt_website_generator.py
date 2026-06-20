@@ -863,6 +863,11 @@ LEARNING_PROFILE_CONFIG = {
     "default_sample_size": 1,
 }
 
+OPTIMIZATION_ENGINE_CONFIG = {
+    "model_version": "v1",
+    "minimum_confidence": 0.50,
+}
+
 def build_learning_profile(
     profile: dict[str, Any],
 ) -> dict:
@@ -916,6 +921,53 @@ def build_learning_profile(
             ),
         "model_version":
             LEARNING_PROFILE_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_optimization_recommendation(
+    profile: dict[str, Any],
+) -> dict:
+
+    performance_tracking = profile.get(
+        "performance_tracking",
+        {},
+    )
+
+    conversion_prediction = profile.get(
+        "conversion_prediction",
+        {},
+    )
+
+    confidence = float(
+        conversion_prediction.get(
+            "prediction_confidence",
+            0,
+        )
+    )
+
+    return {
+        "recommended_hero_type":
+            performance_tracking.get(
+                "hero_type",
+            ),
+        "recommended_cta_type":
+            performance_tracking.get(
+                "cta_type",
+            ),
+        "recommended_offer_type":
+            performance_tracking.get(
+                "offer_type",
+            ),
+        "confidence":
+            max(
+                confidence,
+                OPTIMIZATION_ENGINE_CONFIG[
+                    "minimum_confidence"
+                ],
+            ),
+        "model_version":
+            OPTIMIZATION_ENGINE_CONFIG[
                 "model_version"
             ],
     }
@@ -5372,6 +5424,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "optimization_recommendation"
+            ] = build_optimization_recommendation(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -5471,6 +5529,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "model_version",
+                    )
+                ),
+
+                recommended_hero_type=(
+                    profile.get(
+                        "optimization_recommendation",
+                        {},
+                    ).get(
+                        "recommended_hero_type",
+                    )
+                ),
+
+                recommended_cta_type=(
+                    profile.get(
+                        "optimization_recommendation",
+                        {},
+                    ).get(
+                        "recommended_cta_type",
+                    )
+                ),
+
+                optimization_confidence=(
+                    profile.get(
+                        "optimization_recommendation",
+                        {},
+                    ).get(
+                        "confidence",
                     )
                 ),
                 cta=profile.get(
