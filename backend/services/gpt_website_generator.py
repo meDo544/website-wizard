@@ -764,6 +764,12 @@ CONVERSION_PREDICTION_CONFIG = {
     "confidence_ceiling": 0.95,
 }
 
+FEEDBACK_COLLECTION_CONFIG = {
+    "model_version": "v1",
+    "feedback_source": "autonomous_pipeline",
+    "feedback_status": "pending",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1084,6 +1090,35 @@ def build_variant_application(
             ],
         "model_version":
             VARIANT_APPLICATION_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_feedback_collection(
+    profile: dict[str, Any],
+) -> dict:
+
+    variant_application = profile.get(
+        "variant_application",
+        {},
+    )
+
+    return {
+        "application_id":
+            variant_application.get(
+                "model_version",
+                "v1",
+            ),
+        "feedback_status":
+            FEEDBACK_COLLECTION_CONFIG[
+                "feedback_status"
+            ],
+        "feedback_source":
+            FEEDBACK_COLLECTION_CONFIG[
+                "feedback_source"
+            ],
+        "model_version":
+            FEEDBACK_COLLECTION_CONFIG[
                 "model_version"
             ],
     }
@@ -5564,6 +5599,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "feedback_collection"
+            ] = build_feedback_collection(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -5771,6 +5812,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "cta_type",
+                    )
+                ),
+
+                feedback_status=(
+                    profile.get(
+                        "feedback_collection",
+                        {},
+                    ).get(
+                        "feedback_status",
+                    )
+                ),
+
+                feedback_source=(
+                    profile.get(
+                        "feedback_collection",
+                        {},
+                    ).get(
+                        "feedback_source",
+                    )
+                ),
+
+                feedback_application_id=(
+                    profile.get(
+                        "feedback_collection",
+                        {},
+                    ).get(
+                        "application_id",
                     )
                 ),
 
