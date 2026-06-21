@@ -783,6 +783,12 @@ LEARNING_SIGNAL_CONFIG = {
     "default_signal_strength": 0.0,
 }
 
+LEARNING_ACCUMULATOR_CONFIG = {
+    "model_version": "v1",
+    "accumulator_source": "learning_signal",
+    "accumulator_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1194,6 +1200,36 @@ def build_learning_signal(
             ),
         "model_version":
             LEARNING_SIGNAL_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_learning_accumulator(
+    profile: dict[str, Any],
+) -> dict:
+
+    learning_signal = profile.get(
+        "learning_signal",
+        {},
+    )
+
+    return {
+        "signal_count": 1,
+        "aggregate_strength":
+            learning_signal.get(
+                "signal_strength",
+                0.0,
+            ),
+        "accumulator_status":
+            LEARNING_ACCUMULATOR_CONFIG[
+                "accumulator_status"
+            ],
+        "accumulator_source":
+            LEARNING_ACCUMULATOR_CONFIG[
+                "accumulator_source"
+            ],
+        "model_version":
+            LEARNING_ACCUMULATOR_CONFIG[
                 "model_version"
             ],
     }
@@ -5692,6 +5728,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "learning_accumulator"
+            ] = build_learning_accumulator(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -5980,6 +6022,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "signal_source",
+                    )
+                ),
+
+                learning_signal_count=(
+                    profile.get(
+                        "learning_accumulator",
+                        {},
+                    ).get(
+                        "signal_count",
+                    )
+                ),
+
+                aggregate_strength=(
+                    profile.get(
+                        "learning_accumulator",
+                        {},
+                    ).get(
+                        "aggregate_strength",
+                    )
+                ),
+
+                accumulator_status=(
+                    profile.get(
+                        "learning_accumulator",
+                        {},
+                    ).get(
+                        "accumulator_status",
                     )
                 ),
 
