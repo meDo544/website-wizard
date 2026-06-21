@@ -776,6 +776,13 @@ FEEDBACK_OUTCOME_CONFIG = {
     "outcome_status": "awaiting_results",
 }
 
+LEARNING_SIGNAL_CONFIG = {
+    "model_version": "v1",
+    "signal_source": "feedback_outcome",
+    "signal_status": "pending",
+    "default_signal_strength": 0.0,
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1154,6 +1161,39 @@ def build_feedback_outcome(
             ),
         "model_version":
             FEEDBACK_OUTCOME_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_learning_signal(
+    profile: dict[str, Any],
+) -> dict:
+
+    feedback_outcome = profile.get(
+        "feedback_outcome",
+        {},
+    )
+
+    return {
+        "signal_strength":
+            LEARNING_SIGNAL_CONFIG[
+                "default_signal_strength"
+            ],
+        "signal_status":
+            LEARNING_SIGNAL_CONFIG[
+                "signal_status"
+            ],
+        "signal_source":
+            LEARNING_SIGNAL_CONFIG[
+                "signal_source"
+            ],
+        "application_id":
+            feedback_outcome.get(
+                "application_id",
+                "v1",
+            ),
+        "model_version":
+            LEARNING_SIGNAL_CONFIG[
                 "model_version"
             ],
     }
@@ -5646,6 +5686,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "learning_signal"
+            ] = build_learning_signal(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -5907,6 +5953,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "application_id",
+                    )
+                ),
+
+                signal_strength=(
+                    profile.get(
+                        "learning_signal",
+                        {},
+                    ).get(
+                        "signal_strength",
+                    )
+                ),
+
+                signal_status=(
+                    profile.get(
+                        "learning_signal",
+                        {},
+                    ).get(
+                        "signal_status",
+                    )
+                ),
+
+                signal_source=(
+                    profile.get(
+                        "learning_signal",
+                        {},
+                    ).get(
+                        "signal_source",
                     )
                 ),
 
