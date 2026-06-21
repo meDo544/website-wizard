@@ -878,6 +878,12 @@ SELECTION_OVERRIDE_CONFIG = {
     "override_enabled": True,
 }
 
+VARIANT_APPLICATION_CONFIG = {
+    "model_version": "v1",
+    "application_source": "selection_override",
+    "applied": True,
+}
+
 def build_learning_profile(
     profile: dict[str, Any],
 ) -> dict:
@@ -1042,6 +1048,42 @@ def build_selection_override(
             ],
         "model_version":
             SELECTION_OVERRIDE_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_variant_application(
+    profile: dict[str, Any],
+) -> dict:
+
+    selection_override = profile.get(
+        "selection_override",
+        {},
+    )
+
+    return {
+        "hero_type":
+            selection_override.get(
+                "hero_type",
+            ),
+        "cta_type":
+            selection_override.get(
+                "cta_type",
+            ),
+        "offer_type":
+            selection_override.get(
+                "offer_type",
+            ),
+        "application_source":
+            VARIANT_APPLICATION_CONFIG[
+                "application_source"
+            ],
+        "applied":
+            VARIANT_APPLICATION_CONFIG[
+                "applied"
+            ],
+        "model_version":
+            VARIANT_APPLICATION_CONFIG[
                 "model_version"
             ],
     }
@@ -5516,6 +5558,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "variant_application"
+            ] = build_variant_application(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -5693,6 +5741,33 @@ Use this exact JSON structure:
                 override_cta_type=(
                     profile.get(
                         "selection_override",
+                        {},
+                    ).get(
+                        "cta_type",
+                    )
+                ),
+
+                application_applied=(
+                    profile.get(
+                        "variant_application",
+                        {},
+                    ).get(
+                        "applied",
+                    )
+                ),
+
+                application_hero_type=(
+                    profile.get(
+                        "variant_application",
+                        {},
+                    ).get(
+                        "hero_type",
+                    )
+                ),
+
+                application_cta_type=(
+                    profile.get(
+                        "variant_application",
                         {},
                     ).get(
                         "cta_type",
