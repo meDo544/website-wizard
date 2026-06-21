@@ -873,6 +873,11 @@ VARIANT_SELECTION_CONFIG = {
     "selection_source": "optimization_engine",
 }
 
+SELECTION_OVERRIDE_CONFIG = {
+    "model_version": "v1",
+    "override_enabled": True,
+}
+
 def build_learning_profile(
     profile: dict[str, Any],
 ) -> dict:
@@ -1005,6 +1010,38 @@ def build_variant_selection_strategy(
             ],
         "model_version":
             VARIANT_SELECTION_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_selection_override(
+    profile: dict[str, Any],
+) -> dict:
+
+    variant_selection_strategy = profile.get(
+        "variant_selection_strategy",
+        {},
+    )
+
+    return {
+        "hero_type":
+            variant_selection_strategy.get(
+                "hero_type",
+            ),
+        "cta_type":
+            variant_selection_strategy.get(
+                "cta_type",
+            ),
+        "offer_type":
+            variant_selection_strategy.get(
+                "offer_type",
+            ),
+        "override_enabled":
+            SELECTION_OVERRIDE_CONFIG[
+                "override_enabled"
+            ],
+        "model_version":
+            SELECTION_OVERRIDE_CONFIG[
                 "model_version"
             ],
     }
@@ -5473,6 +5510,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "selection_override"
+            ] = build_selection_override(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -5628,6 +5671,34 @@ Use this exact JSON structure:
                         "selection_source",
                     )
                 ),
+
+                override_enabled=(
+                    profile.get(
+                        "selection_override",
+                        {},
+                    ).get(
+                        "override_enabled",
+                    )
+                ),
+
+                override_hero_type=(
+                    profile.get(
+                        "selection_override",
+                        {},
+                    ).get(
+                        "hero_type",
+                    )
+                ),
+
+                override_cta_type=(
+                    profile.get(
+                        "selection_override",
+                        {},
+                    ).get(
+                        "cta_type",
+                    )
+                ),
+
                 cta=profile.get(
                     "cta",
                 ),
