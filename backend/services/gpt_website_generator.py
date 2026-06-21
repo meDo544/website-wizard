@@ -770,6 +770,12 @@ FEEDBACK_COLLECTION_CONFIG = {
     "feedback_status": "pending",
 }
 
+FEEDBACK_OUTCOME_CONFIG = {
+    "model_version": "v1",
+    "outcome_source": "feedback_collection",
+    "outcome_status": "awaiting_results",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1119,6 +1125,35 @@ def build_feedback_collection(
             ],
         "model_version":
             FEEDBACK_COLLECTION_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_feedback_outcome(
+    profile: dict[str, Any],
+) -> dict:
+
+    feedback_collection = profile.get(
+        "feedback_collection",
+        {},
+    )
+
+    return {
+        "outcome_status":
+            FEEDBACK_OUTCOME_CONFIG[
+                "outcome_status"
+            ],
+        "outcome_source":
+            FEEDBACK_OUTCOME_CONFIG[
+                "outcome_source"
+            ],
+        "application_id":
+            feedback_collection.get(
+                "application_id",
+                "v1",
+            ),
+        "model_version":
+            FEEDBACK_OUTCOME_CONFIG[
                 "model_version"
             ],
     }
@@ -5605,6 +5640,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "feedback_outcome"
+            ] = build_feedback_outcome(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -5836,6 +5877,33 @@ Use this exact JSON structure:
                 feedback_application_id=(
                     profile.get(
                         "feedback_collection",
+                        {},
+                    ).get(
+                        "application_id",
+                    )
+                ),
+
+                outcome_status=(
+                    profile.get(
+                        "feedback_outcome",
+                        {},
+                    ).get(
+                        "outcome_status",
+                    )
+                ),
+
+                outcome_source=(
+                    profile.get(
+                        "feedback_outcome",
+                        {},
+                    ).get(
+                        "outcome_source",
+                    )
+                ),
+
+                outcome_application_id=(
+                    profile.get(
+                        "feedback_outcome",
                         {},
                     ).get(
                         "application_id",
