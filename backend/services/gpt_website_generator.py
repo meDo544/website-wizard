@@ -813,6 +813,12 @@ KNOWLEDGE_REFINEMENT_CONFIG = {
     "refinement_status": "active",
 }
 
+OPTIMIZATION_INTELLIGENCE_CONFIG = {
+    "model_version": "v1",
+    "intelligence_source": "knowledge_refinement",
+    "intelligence_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1392,6 +1398,40 @@ def build_knowledge_refinement(
             ],
         "model_version":
             KNOWLEDGE_REFINEMENT_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_optimization_intelligence(
+    profile: dict[str, Any],
+) -> dict:
+
+    knowledge_refinement = profile.get(
+        "knowledge_refinement",
+        {},
+    )
+
+    return {
+        "intelligence_strength":
+            knowledge_refinement.get(
+                "refinement_strength",
+                0.0,
+            ),
+        "intelligence_entries":
+            knowledge_refinement.get(
+                "refinement_entries",
+                1,
+            ),
+        "intelligence_status":
+            OPTIMIZATION_INTELLIGENCE_CONFIG[
+                "intelligence_status"
+            ],
+        "intelligence_source":
+            OPTIMIZATION_INTELLIGENCE_CONFIG[
+                "intelligence_source"
+            ],
+        "model_version":
+            OPTIMIZATION_INTELLIGENCE_CONFIG[
                 "model_version"
             ],
     }
@@ -5920,6 +5960,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "optimization_intelligence"
+            ] = build_optimization_intelligence(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -6343,6 +6389,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "refinement_status",
+                    )
+                ),
+
+                intelligence_strength=(
+                    profile.get(
+                        "optimization_intelligence",
+                        {},
+                    ).get(
+                        "intelligence_strength",
+                    )
+                ),
+
+                intelligence_entries=(
+                    profile.get(
+                        "optimization_intelligence",
+                        {},
+                    ).get(
+                        "intelligence_entries",
+                    )
+                ),
+
+                intelligence_status=(
+                    profile.get(
+                        "optimization_intelligence",
+                        {},
+                    ).get(
+                        "intelligence_status",
                     )
                 ),
 
