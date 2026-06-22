@@ -795,6 +795,12 @@ ADAPTIVE_MEMORY_CONFIG = {
     "memory_status": "active",
 }
 
+MEMORY_CONSOLIDATION_CONFIG = {
+    "model_version": "v1",
+    "consolidation_source": "adaptive_memory",
+    "consolidation_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1270,6 +1276,40 @@ def build_adaptive_memory(
             ],
         "model_version":
             ADAPTIVE_MEMORY_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_memory_consolidation(
+    profile: dict[str, Any],
+) -> dict:
+
+    adaptive_memory = profile.get(
+        "adaptive_memory",
+        {},
+    )
+
+    return {
+        "consolidated_strength":
+            adaptive_memory.get(
+                "memory_strength",
+                0.0,
+            ),
+        "memory_count":
+            adaptive_memory.get(
+                "memory_entries",
+                1,
+            ),
+        "consolidation_status":
+            MEMORY_CONSOLIDATION_CONFIG[
+                "consolidation_status"
+            ],
+        "consolidation_source":
+            MEMORY_CONSOLIDATION_CONFIG[
+                "consolidation_source"
+            ],
+        "model_version":
+            MEMORY_CONSOLIDATION_CONFIG[
                 "model_version"
             ],
     }
@@ -5780,6 +5820,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "memory_consolidation"
+            ] = build_memory_consolidation(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -6122,6 +6168,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "memory_status",
+                    )
+                ),
+
+                consolidated_strength=(
+                    profile.get(
+                        "memory_consolidation",
+                        {},
+                    ).get(
+                        "consolidated_strength",
+                    )
+                ),
+
+                memory_count=(
+                    profile.get(
+                        "memory_consolidation",
+                        {},
+                    ).get(
+                        "memory_count",
+                    )
+                ),
+
+                consolidation_status=(
+                    profile.get(
+                        "memory_consolidation",
+                        {},
+                    ).get(
+                        "consolidation_status",
                     )
                 ),
 
