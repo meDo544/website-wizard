@@ -807,6 +807,12 @@ OPTIMIZATION_KNOWLEDGE_CONFIG = {
     "knowledge_status": "active",
 }
 
+KNOWLEDGE_REFINEMENT_CONFIG = {
+    "model_version": "v1",
+    "refinement_source": "optimization_knowledge",
+    "refinement_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -926,6 +932,8 @@ VARIANT_APPLICATION_CONFIG = {
     "application_source": "selection_override",
     "applied": True,
 }
+
+
 
 def build_learning_profile(
     profile: dict[str, Any],
@@ -1350,6 +1358,40 @@ def build_optimization_knowledge(
             ],
         "model_version":
             OPTIMIZATION_KNOWLEDGE_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_knowledge_refinement(
+    profile: dict[str, Any],
+) -> dict:
+
+    optimization_knowledge = profile.get(
+        "optimization_knowledge",
+        {},
+    )
+
+    return {
+        "refinement_strength":
+            optimization_knowledge.get(
+                "knowledge_strength",
+                0.0,
+            ),
+        "refinement_entries":
+            optimization_knowledge.get(
+                "knowledge_entries",
+                1,
+            ),
+        "refinement_status":
+            KNOWLEDGE_REFINEMENT_CONFIG[
+                "refinement_status"
+            ],
+        "refinement_source":
+            KNOWLEDGE_REFINEMENT_CONFIG[
+                "refinement_source"
+            ],
+        "model_version":
+            KNOWLEDGE_REFINEMENT_CONFIG[
                 "model_version"
             ],
     }
@@ -5872,6 +5914,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "knowledge_refinement"
+            ] = build_knowledge_refinement(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -6268,6 +6316,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "knowledge_status",
+                    )
+                ),
+
+                refinement_strength=(
+                    profile.get(
+                        "knowledge_refinement",
+                        {},
+                    ).get(
+                        "refinement_strength",
+                    )
+                ),
+
+                refinement_entries=(
+                    profile.get(
+                        "knowledge_refinement",
+                        {},
+                    ).get(
+                        "refinement_entries",
+                    )
+                ),
+
+                refinement_status=(
+                    profile.get(
+                        "knowledge_refinement",
+                        {},
+                    ).get(
+                        "refinement_status",
                     )
                 ),
 
