@@ -789,6 +789,12 @@ LEARNING_ACCUMULATOR_CONFIG = {
     "accumulator_status": "active",
 }
 
+ADAPTIVE_MEMORY_CONFIG = {
+    "model_version": "v1",
+    "memory_source": "learning_accumulator",
+    "memory_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1230,6 +1236,40 @@ def build_learning_accumulator(
             ],
         "model_version":
             LEARNING_ACCUMULATOR_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_adaptive_memory(
+    profile: dict[str, Any],
+) -> dict:
+
+    learning_accumulator = profile.get(
+        "learning_accumulator",
+        {},
+    )
+
+    return {
+        "memory_strength":
+            learning_accumulator.get(
+                "aggregate_strength",
+                0.0,
+            ),
+        "memory_entries":
+            learning_accumulator.get(
+                "signal_count",
+                1,
+            ),
+        "memory_status":
+            ADAPTIVE_MEMORY_CONFIG[
+                "memory_status"
+            ],
+        "memory_source":
+            ADAPTIVE_MEMORY_CONFIG[
+                "memory_source"
+            ],
+        "model_version":
+            ADAPTIVE_MEMORY_CONFIG[
                 "model_version"
             ],
     }
@@ -5734,6 +5774,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "adaptive_memory"
+            ] = build_adaptive_memory(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -6049,6 +6095,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "accumulator_status",
+                    )
+                ),
+
+                memory_strength=(
+                    profile.get(
+                        "adaptive_memory",
+                        {},
+                    ).get(
+                        "memory_strength",
+                    )
+                ),
+
+                memory_entries=(
+                    profile.get(
+                        "adaptive_memory",
+                        {},
+                    ).get(
+                        "memory_entries",
+                    )
+                ),
+
+                memory_status=(
+                    profile.get(
+                        "adaptive_memory",
+                        {},
+                    ).get(
+                        "memory_status",
                     )
                 ),
 
