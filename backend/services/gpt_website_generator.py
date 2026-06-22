@@ -819,6 +819,12 @@ OPTIMIZATION_INTELLIGENCE_CONFIG = {
     "intelligence_status": "active",
 }
 
+AUTONOMOUS_DECISION_CONFIG = {
+    "model_version": "v1",
+    "decision_source": "optimization_intelligence",
+    "decision_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1432,6 +1438,40 @@ def build_optimization_intelligence(
             ],
         "model_version":
             OPTIMIZATION_INTELLIGENCE_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_autonomous_decision(
+    profile: dict[str, Any],
+) -> dict:
+
+    optimization_intelligence = profile.get(
+        "optimization_intelligence",
+        {},
+    )
+
+    return {
+        "decision_strength":
+            optimization_intelligence.get(
+                "intelligence_strength",
+                0.0,
+            ),
+        "decision_entries":
+            optimization_intelligence.get(
+                "intelligence_entries",
+                1,
+            ),
+        "decision_status":
+            AUTONOMOUS_DECISION_CONFIG[
+                "decision_status"
+            ],
+        "decision_source":
+            AUTONOMOUS_DECISION_CONFIG[
+                "decision_source"
+            ],
+        "model_version":
+            AUTONOMOUS_DECISION_CONFIG[
                 "model_version"
             ],
     }
@@ -5966,6 +6006,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "autonomous_decision"
+            ] = build_autonomous_decision(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -6416,6 +6462,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "intelligence_status",
+                    )
+                ),
+
+                decision_strength=(
+                    profile.get(
+                        "autonomous_decision",
+                        {},
+                    ).get(
+                        "decision_strength",
+                    )
+                ),
+
+                decision_entries=(
+                    profile.get(
+                        "autonomous_decision",
+                        {},
+                    ).get(
+                        "decision_entries",
+                    )
+                ),
+
+                decision_status=(
+                    profile.get(
+                        "autonomous_decision",
+                        {},
+                    ).get(
+                        "decision_status",
                     )
                 ),
 
