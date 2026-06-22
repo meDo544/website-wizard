@@ -801,6 +801,12 @@ MEMORY_CONSOLIDATION_CONFIG = {
     "consolidation_status": "active",
 }
 
+OPTIMIZATION_KNOWLEDGE_CONFIG = {
+    "model_version": "v1",
+    "knowledge_source": "memory_consolidation",
+    "knowledge_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1310,6 +1316,40 @@ def build_memory_consolidation(
             ],
         "model_version":
             MEMORY_CONSOLIDATION_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_optimization_knowledge(
+    profile: dict[str, Any],
+) -> dict:
+
+    memory_consolidation = profile.get(
+        "memory_consolidation",
+        {},
+    )
+
+    return {
+        "knowledge_strength":
+            memory_consolidation.get(
+                "consolidated_strength",
+                0.0,
+            ),
+        "knowledge_entries":
+            memory_consolidation.get(
+                "memory_count",
+                1,
+            ),
+        "knowledge_status":
+            OPTIMIZATION_KNOWLEDGE_CONFIG[
+                "knowledge_status"
+            ],
+        "knowledge_source":
+            OPTIMIZATION_KNOWLEDGE_CONFIG[
+                "knowledge_source"
+            ],
+        "model_version":
+            OPTIMIZATION_KNOWLEDGE_CONFIG[
                 "model_version"
             ],
     }
@@ -5826,6 +5866,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "optimization_knowledge"
+            ] = build_optimization_knowledge(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -6195,6 +6241,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "consolidation_status",
+                    )
+                ),
+
+                knowledge_strength=(
+                    profile.get(
+                        "optimization_knowledge",
+                        {},
+                    ).get(
+                        "knowledge_strength",
+                    )
+                ),
+
+                knowledge_entries=(
+                    profile.get(
+                        "optimization_knowledge",
+                        {},
+                    ).get(
+                        "knowledge_entries",
+                    )
+                ),
+
+                knowledge_status=(
+                    profile.get(
+                        "optimization_knowledge",
+                        {},
+                    ).get(
+                        "knowledge_status",
                     )
                 ),
 
