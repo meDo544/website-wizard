@@ -825,6 +825,12 @@ AUTONOMOUS_DECISION_CONFIG = {
     "decision_status": "active",
 }
 
+AUTONOMOUS_ACTION_CONFIG = {
+    "model_version": "v1",
+    "action_source": "autonomous_decision",
+    "action_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1472,6 +1478,40 @@ def build_autonomous_decision(
             ],
         "model_version":
             AUTONOMOUS_DECISION_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_autonomous_action(
+    profile: dict[str, Any],
+) -> dict:
+
+    autonomous_decision = profile.get(
+        "autonomous_decision",
+        {},
+    )
+
+    return {
+        "action_strength":
+            autonomous_decision.get(
+                "decision_strength",
+                0.0,
+            ),
+        "action_entries":
+            autonomous_decision.get(
+                "decision_entries",
+                1,
+            ),
+        "action_status":
+            AUTONOMOUS_ACTION_CONFIG[
+                "action_status"
+            ],
+        "action_source":
+            AUTONOMOUS_ACTION_CONFIG[
+                "action_source"
+            ],
+        "model_version":
+            AUTONOMOUS_ACTION_CONFIG[
                 "model_version"
             ],
     }
@@ -6012,6 +6052,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "autonomous_action"
+            ] = build_autonomous_action(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -6489,6 +6535,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "decision_status",
+                    )
+                ),
+
+                action_strength=(
+                    profile.get(
+                        "autonomous_action",
+                        {},
+                    ).get(
+                        "action_strength",
+                    )
+                ),
+
+                action_entries=(
+                    profile.get(
+                        "autonomous_action",
+                        {},
+                    ).get(
+                        "action_entries",
+                    )
+                ),
+
+                action_status=(
+                    profile.get(
+                        "autonomous_action",
+                        {},
+                    ).get(
+                        "action_status",
                     )
                 ),
 
