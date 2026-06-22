@@ -831,6 +831,12 @@ AUTONOMOUS_ACTION_CONFIG = {
     "action_status": "active",
 }
 
+AUTONOMOUS_EXECUTION_CONFIG = {
+    "model_version": "v1",
+    "execution_source": "autonomous_action",
+    "execution_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1512,6 +1518,40 @@ def build_autonomous_action(
             ],
         "model_version":
             AUTONOMOUS_ACTION_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_autonomous_execution(
+    profile: dict[str, Any],
+) -> dict:
+
+    autonomous_action = profile.get(
+        "autonomous_action",
+        {},
+    )
+
+    return {
+        "execution_strength":
+            autonomous_action.get(
+                "action_strength",
+                0.0,
+            ),
+        "execution_entries":
+            autonomous_action.get(
+                "action_entries",
+                1,
+            ),
+        "execution_status":
+            AUTONOMOUS_EXECUTION_CONFIG[
+                "execution_status"
+            ],
+        "execution_source":
+            AUTONOMOUS_EXECUTION_CONFIG[
+                "execution_source"
+            ],
+        "model_version":
+            AUTONOMOUS_EXECUTION_CONFIG[
                 "model_version"
             ],
     }
@@ -6058,6 +6098,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "autonomous_execution"
+            ] = build_autonomous_execution(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -6562,6 +6608,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "action_status",
+                    )
+                ),
+
+                execution_strength=(
+                    profile.get(
+                        "autonomous_execution",
+                        {},
+                    ).get(
+                        "execution_strength",
+                    )
+                ),
+
+                execution_entries=(
+                    profile.get(
+                        "autonomous_execution",
+                        {},
+                    ).get(
+                        "execution_entries",
+                    )
+                ),
+
+                execution_status=(
+                    profile.get(
+                        "autonomous_execution",
+                        {},
+                    ).get(
+                        "execution_status",
                     )
                 ),
 
