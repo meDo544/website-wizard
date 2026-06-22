@@ -837,6 +837,12 @@ AUTONOMOUS_EXECUTION_CONFIG = {
     "execution_status": "active",
 }
 
+AUTONOMOUS_OUTCOME_CONFIG = {
+    "model_version": "v1",
+    "outcome_source": "autonomous_execution",
+    "outcome_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1552,6 +1558,40 @@ def build_autonomous_execution(
             ],
         "model_version":
             AUTONOMOUS_EXECUTION_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_autonomous_outcome(
+    profile: dict[str, Any],
+) -> dict:
+
+    autonomous_execution = profile.get(
+        "autonomous_execution",
+        {},
+    )
+
+    return {
+        "outcome_strength":
+            autonomous_execution.get(
+                "execution_strength",
+                0.0,
+            ),
+        "outcome_entries":
+            autonomous_execution.get(
+                "execution_entries",
+                1,
+            ),
+        "outcome_status":
+            AUTONOMOUS_OUTCOME_CONFIG[
+                "outcome_status"
+            ],
+        "outcome_source":
+            AUTONOMOUS_OUTCOME_CONFIG[
+                "outcome_source"
+            ],
+        "model_version":
+            AUTONOMOUS_OUTCOME_CONFIG[
                 "model_version"
             ],
     }
@@ -6104,6 +6144,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "autonomous_outcome"
+            ] = build_autonomous_outcome(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -6635,6 +6681,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "execution_status",
+                    )
+                ),
+
+                autonomous_outcome_strength=(
+                    profile.get(
+                        "autonomous_outcome",
+                        {},
+                    ).get(
+                        "outcome_strength",
+                    )
+                ),
+
+                autonomous_outcome_entries=(
+                    profile.get(
+                        "autonomous_outcome",
+                        {},
+                    ).get(
+                        "outcome_entries",
+                    )
+                ),
+
+                autonomous_outcome_status=(
+                    profile.get(
+                        "autonomous_outcome",
+                        {},
+                    ).get(
+                        "outcome_status",
                     )
                 ),
 
