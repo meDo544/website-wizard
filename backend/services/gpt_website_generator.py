@@ -849,6 +849,12 @@ AUTONOMOUS_EVALUATION_CONFIG = {
     "evaluation_status": "active",
 }
 
+AUTONOMOUS_ADAPTATION_CONFIG = {
+    "model_version": "v1",
+    "adaptation_source": "autonomous_evaluation",
+    "adaptation_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1632,6 +1638,40 @@ def build_autonomous_evaluation(
             ],
         "model_version":
             AUTONOMOUS_EVALUATION_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_autonomous_adaptation(
+    profile: dict[str, Any],
+) -> dict:
+
+    autonomous_evaluation = profile.get(
+        "autonomous_evaluation",
+        {},
+    )
+
+    return {
+        "adaptation_strength":
+            autonomous_evaluation.get(
+                "evaluation_strength",
+                0.0,
+            ),
+        "adaptation_entries":
+            autonomous_evaluation.get(
+                "evaluation_entries",
+                1,
+            ),
+        "adaptation_status":
+            AUTONOMOUS_ADAPTATION_CONFIG[
+                "adaptation_status"
+            ],
+        "adaptation_source":
+            AUTONOMOUS_ADAPTATION_CONFIG[
+                "adaptation_source"
+            ],
+        "model_version":
+            AUTONOMOUS_ADAPTATION_CONFIG[
                 "model_version"
             ],
     }
@@ -6196,6 +6236,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "autonomous_adaptation"
+            ] = build_autonomous_adaptation(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -6781,6 +6827,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "evaluation_status",
+                    )
+                ),
+
+                adaptation_strength=(
+                   profile.get(
+                        "autonomous_adaptation",
+                        {},
+                    ).get(
+                        "adaptation_strength",
+                    )
+                ),
+
+                adaptation_entries=(
+                    profile.get(
+                        "autonomous_adaptation",
+                        {},
+                    ).get(
+                        "adaptation_entries",
+                    )
+                ),
+
+                adaptation_status=(
+                    profile.get(
+                        "autonomous_adaptation",
+                        {},
+                    ).get(
+                        "adaptation_status",
                     )
                 ),
 
