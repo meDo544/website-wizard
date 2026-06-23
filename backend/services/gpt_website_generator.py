@@ -873,6 +873,12 @@ AUTONOMOUS_PLANNING_CONFIG = {
     "planning_status": "active",
 }
 
+AUTONOMOUS_COORDINATION_CONFIG = {
+    "model_version": "v1",
+    "coordination_source": "autonomous_planning",
+    "coordination_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1792,6 +1798,40 @@ def build_autonomous_planning(
             ],
         "model_version":
             AUTONOMOUS_PLANNING_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_autonomous_coordination(
+    profile: dict[str, Any],
+) -> dict:
+
+    autonomous_planning = profile.get(
+        "autonomous_planning",
+        {},
+    )
+
+    return {
+        "coordination_strength":
+            autonomous_planning.get(
+                "planning_strength",
+                0.0,
+            ),
+        "coordination_entries":
+            autonomous_planning.get(
+                "planning_entries",
+                1,
+            ),
+        "coordination_status":
+            AUTONOMOUS_COORDINATION_CONFIG[
+                "coordination_status"
+            ],
+        "coordination_source":
+            AUTONOMOUS_COORDINATION_CONFIG[
+                "coordination_source"
+            ],
+        "model_version":
+            AUTONOMOUS_COORDINATION_CONFIG[
                 "model_version"
             ],
     }
@@ -6380,6 +6420,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "autonomous_coordination"
+            ] = build_autonomous_coordination(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -7073,6 +7119,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "planning_status",
+                    )
+                ),
+
+                coordination_strength=(
+                    profile.get(
+                        "autonomous_coordination",
+                        {},
+                    ).get(
+                        "coordination_strength",
+                    )
+                ),
+
+                coordination_entries=(
+                    profile.get(
+                        "autonomous_coordination",
+                        {},
+                    ).get(
+                        "coordination_entries",
+                    )
+                ),
+
+                coordination_status=(
+                    profile.get(
+                        "autonomous_coordination",
+                        {},
+                    ).get(
+                        "coordination_status",
                     )
                 ),
 
