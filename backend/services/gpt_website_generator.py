@@ -867,6 +867,12 @@ AUTONOMOUS_STRATEGY_CONFIG = {
     "strategy_status": "active",
 }
 
+AUTONOMOUS_PLANNING_CONFIG = {
+    "model_version": "v1",
+    "planning_source": "autonomous_strategy",
+    "planning_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1752,6 +1758,40 @@ def build_autonomous_strategy(
             ],
         "model_version":
             AUTONOMOUS_STRATEGY_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_autonomous_planning(
+    profile: dict[str, Any],
+) -> dict:
+
+    autonomous_strategy = profile.get(
+        "autonomous_strategy",
+        {},
+    )
+
+    return {
+        "planning_strength":
+            autonomous_strategy.get(
+                "strategy_strength",
+                0.0,
+            ),
+        "planning_entries":
+            autonomous_strategy.get(
+                "strategy_entries",
+                1,
+            ),
+        "planning_status":
+            AUTONOMOUS_PLANNING_CONFIG[
+                "planning_status"
+            ],
+        "planning_source":
+            AUTONOMOUS_PLANNING_CONFIG[
+                "planning_source"
+            ],
+        "model_version":
+            AUTONOMOUS_PLANNING_CONFIG[
                 "model_version"
             ],
     }
@@ -6334,6 +6374,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "autonomous_planning"
+            ] = build_autonomous_planning(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -7000,6 +7046,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "strategy_status",
+                    )
+                ),
+
+                planning_strength=(
+                    profile.get(
+                        "autonomous_planning",
+                        {},
+                    ).get(
+                        "planning_strength",
+                    )
+                ),
+
+                planning_entries=(
+                    profile.get(
+                        "autonomous_planning",
+                        {},
+                    ).get(
+                        "planning_entries",
+                    )
+                ),
+
+                planning_status=(
+                    profile.get(
+                        "autonomous_planning",
+                        {},
+                    ).get(
+                        "planning_status",
                     )
                 ),
 
