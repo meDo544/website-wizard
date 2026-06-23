@@ -843,6 +843,12 @@ AUTONOMOUS_OUTCOME_CONFIG = {
     "outcome_status": "active",
 }
 
+AUTONOMOUS_EVALUATION_CONFIG = {
+    "model_version": "v1",
+    "evaluation_source": "autonomous_outcome",
+    "evaluation_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1592,6 +1598,40 @@ def build_autonomous_outcome(
             ],
         "model_version":
             AUTONOMOUS_OUTCOME_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_autonomous_evaluation(
+    profile: dict[str, Any],
+) -> dict:
+
+    autonomous_outcome = profile.get(
+        "autonomous_outcome",
+        {},
+    )
+
+    return {
+        "evaluation_strength":
+            autonomous_outcome.get(
+                "outcome_strength",
+                0.0,
+            ),
+        "evaluation_entries":
+            autonomous_outcome.get(
+                "outcome_entries",
+                1,
+            ),
+        "evaluation_status":
+            AUTONOMOUS_EVALUATION_CONFIG[
+                "evaluation_status"
+            ],
+        "evaluation_source":
+            AUTONOMOUS_EVALUATION_CONFIG[
+                "evaluation_source"
+            ],
+        "model_version":
+            AUTONOMOUS_EVALUATION_CONFIG[
                 "model_version"
             ],
     }
@@ -6150,6 +6190,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "autonomous_evaluation"
+            ] = build_autonomous_evaluation(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -6708,6 +6754,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "outcome_status",
+                    )
+                ),
+
+                evaluation_strength=(
+                    profile.get(
+                        "autonomous_evaluation",
+                        {},
+                    ).get(
+                        "evaluation_strength",
+                    )
+                ),
+
+                evaluation_entries=(
+                    profile.get(
+                        "autonomous_evaluation",
+                        {},
+                    ).get(
+                        "evaluation_entries",
+                    )
+                ),
+
+                evaluation_status=(
+                   profile.get(
+                        "autonomous_evaluation",
+                        {},
+                    ).get(
+                        "evaluation_status",
                     )
                 ),
 
