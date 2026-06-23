@@ -861,6 +861,12 @@ AUTONOMOUS_EVOLUTION_CONFIG = {
     "evolution_status": "active",
 }
 
+AUTONOMOUS_STRATEGY_CONFIG = {
+    "model_version": "v1",
+    "strategy_source": "autonomous_evolution",
+    "strategy_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1712,6 +1718,40 @@ def build_autonomous_evolution(
             ],
         "model_version":
             AUTONOMOUS_EVOLUTION_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_autonomous_strategy(
+    profile: dict[str, Any],
+) -> dict:
+
+    autonomous_evolution = profile.get(
+        "autonomous_evolution",
+        {},
+    )
+
+    return {
+        "strategy_strength":
+            autonomous_evolution.get(
+                "evolution_strength",
+                0.0,
+            ),
+        "strategy_entries":
+            autonomous_evolution.get(
+                "evolution_entries",
+                1,
+            ),
+        "strategy_status":
+            AUTONOMOUS_STRATEGY_CONFIG[
+                "strategy_status"
+            ],
+        "strategy_source":
+            AUTONOMOUS_STRATEGY_CONFIG[
+                "strategy_source"
+            ],
+        "model_version":
+            AUTONOMOUS_STRATEGY_CONFIG[
                 "model_version"
             ],
     }
@@ -6288,6 +6328,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "autonomous_strategy"
+            ] = build_autonomous_strategy(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -6927,6 +6973,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "evolution_status",
+                    )
+                ),
+
+                strategy_strength=(
+                    profile.get(
+                        "autonomous_strategy",
+                        {},
+                    ).get(
+                        "strategy_strength",
+                    )
+                ),
+
+                strategy_entries=(
+                    profile.get(
+                        "autonomous_strategy",
+                        {},
+                    ).get(
+                        "strategy_entries",
+                    )
+                ),
+
+                strategy_status=(
+                    profile.get(
+                        "autonomous_strategy",
+                        {},
+                    ).get(
+                        "strategy_status",
                     )
                 ),
 
