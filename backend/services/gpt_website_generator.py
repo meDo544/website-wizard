@@ -897,6 +897,12 @@ AUTONOMOUS_SELF_IMPROVEMENT_CONFIG = {
     "improvement_status": "active",
 }
 
+RECURSIVE_LEARNING_CONFIG = {
+    "model_version": "v1",
+    "recursive_source": "autonomous_self_improvement",
+    "recursive_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1952,6 +1958,40 @@ def build_autonomous_self_improvement(
             ],
         "model_version":
             AUTONOMOUS_SELF_IMPROVEMENT_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_recursive_learning(
+    profile: dict[str, Any],
+) -> dict:
+
+    autonomous_self_improvement = profile.get(
+        "autonomous_self_improvement",
+        {},
+    )
+
+    return {
+        "recursive_strength":
+            autonomous_self_improvement.get(
+                "improvement_strength",
+                0.0,
+            ),
+        "recursive_entries":
+            autonomous_self_improvement.get(
+                "improvement_entries",
+                1,
+            ),
+        "recursive_status":
+            RECURSIVE_LEARNING_CONFIG[
+                "recursive_status"
+            ],
+        "recursive_source":
+            RECURSIVE_LEARNING_CONFIG[
+                "recursive_source"
+            ],
+        "model_version":
+            RECURSIVE_LEARNING_CONFIG[
                 "model_version"
             ],
     }
@@ -6564,6 +6604,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "recursive_learning"
+            ] = build_recursive_learning(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -7365,6 +7411,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "improvement_status",
+                    )
+                ),
+
+                recursive_strength=(
+                    profile.get(
+                        "recursive_learning",
+                        {},
+                    ).get(
+                        "recursive_strength",
+                    )
+                ),
+
+                recursive_entries=(
+                    profile.get(
+                        "recursive_learning",
+                        {},
+                    ).get(
+                        "recursive_entries",
+                    )
+                ),
+
+                recursive_status=(
+                    profile.get(
+                        "recursive_learning",
+                        {},
+                    ).get(
+                        "recursive_status",
                     )
                 ),
 
