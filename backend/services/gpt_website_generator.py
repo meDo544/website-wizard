@@ -879,6 +879,12 @@ AUTONOMOUS_COORDINATION_CONFIG = {
     "coordination_status": "active",
 }
 
+AUTONOMOUS_ORCHESTRATION_CONFIG = {
+    "model_version": "v1",
+    "orchestration_source": "autonomous_coordination",
+    "orchestration_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1832,6 +1838,40 @@ def build_autonomous_coordination(
             ],
         "model_version":
             AUTONOMOUS_COORDINATION_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_autonomous_orchestration(
+    profile: dict[str, Any],
+) -> dict:
+
+    autonomous_coordination = profile.get(
+        "autonomous_coordination",
+        {},
+    )
+
+    return {
+        "orchestration_strength":
+            autonomous_coordination.get(
+                "coordination_strength",
+                0.0,
+            ),
+        "orchestration_entries":
+            autonomous_coordination.get(
+                "coordination_entries",
+                1,
+            ),
+        "orchestration_status":
+            AUTONOMOUS_ORCHESTRATION_CONFIG[
+                "orchestration_status"
+            ],
+        "orchestration_source":
+            AUTONOMOUS_ORCHESTRATION_CONFIG[
+                "orchestration_source"
+            ],
+        "model_version":
+            AUTONOMOUS_ORCHESTRATION_CONFIG[
                 "model_version"
             ],
     }
@@ -6426,6 +6466,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "autonomous_orchestration"
+            ] = build_autonomous_orchestration(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -7146,6 +7192,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "coordination_status",
+                    )
+                ),
+
+                orchestration_strength=(
+                    profile.get(
+                        "autonomous_orchestration",
+                        {},
+                    ).get(
+                        "orchestration_strength",
+                    )
+                ),
+
+                orchestration_entries=(
+                    profile.get(
+                        "autonomous_orchestration",
+                        {},
+                    ).get(
+                        "orchestration_entries",
+                    )
+                ),
+
+                orchestration_status=(
+                    profile.get(
+                        "autonomous_orchestration",
+                        {},
+                    ).get(
+                        "orchestration_status",
                     )
                 ),
 
