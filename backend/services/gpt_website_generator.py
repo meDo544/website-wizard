@@ -891,6 +891,12 @@ AUTONOMOUS_GOVERNANCE_CONFIG = {
     "governance_status": "active",
 }
 
+AUTONOMOUS_SELF_IMPROVEMENT_CONFIG = {
+    "model_version": "v1",
+    "improvement_source": "autonomous_governance",
+    "improvement_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1912,6 +1918,40 @@ def build_autonomous_governance(
             ],
         "model_version":
             AUTONOMOUS_GOVERNANCE_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_autonomous_self_improvement(
+    profile: dict[str, Any],
+) -> dict:
+
+    autonomous_governance = profile.get(
+        "autonomous_governance",
+        {},
+    )
+
+    return {
+        "improvement_strength":
+            autonomous_governance.get(
+                "governance_strength",
+                0.0,
+            ),
+        "improvement_entries":
+            autonomous_governance.get(
+                "governance_entries",
+                1,
+            ),
+        "improvement_status":
+            AUTONOMOUS_SELF_IMPROVEMENT_CONFIG[
+                "improvement_status"
+            ],
+        "improvement_source":
+            AUTONOMOUS_SELF_IMPROVEMENT_CONFIG[
+                "improvement_source"
+            ],
+        "model_version":
+            AUTONOMOUS_SELF_IMPROVEMENT_CONFIG[
                 "model_version"
             ],
     }
@@ -6518,6 +6558,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "autonomous_self_improvement"
+            ] = build_autonomous_self_improvement(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -7292,6 +7338,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "governance_status",
+                    )
+                ),
+
+                improvement_strength=(
+                    profile.get(
+                        "autonomous_self_improvement",
+                        {},
+                    ).get(
+                        "improvement_strength",
+                    )
+                ),
+
+                improvement_entries=(
+                    profile.get(
+                        "autonomous_self_improvement",
+                        {},
+                    ).get(
+                        "improvement_entries",
+                    )
+                ),
+
+                improvement_status=(
+                    profile.get(
+                        "autonomous_self_improvement",
+                        {},
+                    ).get(
+                        "improvement_status",
                     )
                 ),
 
