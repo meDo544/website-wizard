@@ -903,6 +903,12 @@ RECURSIVE_LEARNING_CONFIG = {
     "recursive_status": "active",
 }
 
+AUTONOMOUS_CORE_CONFIG = {
+    "model_version": "v1",
+    "core_source": "recursive_learning",
+    "core_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1992,6 +1998,40 @@ def build_recursive_learning(
             ],
         "model_version":
             RECURSIVE_LEARNING_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_autonomous_core(
+    profile: dict[str, Any],
+) -> dict:
+
+    recursive_learning = profile.get(
+        "recursive_learning",
+        {},
+    )
+
+    return {
+        "core_strength":
+            recursive_learning.get(
+                "recursive_strength",
+                0.0,
+            ),
+        "core_entries":
+            recursive_learning.get(
+                "recursive_entries",
+                1,
+            ),
+        "core_status":
+            AUTONOMOUS_CORE_CONFIG[
+                "core_status"
+            ],
+        "core_source":
+            AUTONOMOUS_CORE_CONFIG[
+                "core_source"
+            ],
+        "model_version":
+            AUTONOMOUS_CORE_CONFIG[
                 "model_version"
             ],
     }
@@ -6610,6 +6650,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "autonomous_core"
+            ] = build_autonomous_core(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -7438,6 +7484,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "recursive_status",
+                    )
+                ),
+
+                core_strength=(
+                    profile.get(
+                        "autonomous_core",
+                        {},
+                    ).get(
+                        "core_strength",
+                    )
+                ),
+
+                core_entries=(
+                    profile.get(
+                        "autonomous_core",
+                        {},
+                    ).get(
+                        "core_entries",
+                    )
+                ),
+
+                core_status=(
+                    profile.get(
+                        "autonomous_core",
+                        {},
+                    ).get(
+                        "core_status",
                     )
                 ),
 
