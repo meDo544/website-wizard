@@ -885,6 +885,12 @@ AUTONOMOUS_ORCHESTRATION_CONFIG = {
     "orchestration_status": "active",
 }
 
+AUTONOMOUS_GOVERNANCE_CONFIG = {
+    "model_version": "v1",
+    "governance_source": "autonomous_orchestration",
+    "governance_status": "active",
+}
+
 def build_performance_tracking(website_data: dict) -> dict:
     performance_tracking = {}
 
@@ -1872,6 +1878,40 @@ def build_autonomous_orchestration(
             ],
         "model_version":
             AUTONOMOUS_ORCHESTRATION_CONFIG[
+                "model_version"
+            ],
+    }
+
+def build_autonomous_governance(
+    profile: dict[str, Any],
+) -> dict:
+
+    autonomous_orchestration = profile.get(
+        "autonomous_orchestration",
+        {},
+    )
+
+    return {
+        "governance_strength":
+            autonomous_orchestration.get(
+                "orchestration_strength",
+                0.0,
+            ),
+        "governance_entries":
+            autonomous_orchestration.get(
+                "orchestration_entries",
+                1,
+            ),
+        "governance_status":
+            AUTONOMOUS_GOVERNANCE_CONFIG[
+                "governance_status"
+            ],
+        "governance_source":
+            AUTONOMOUS_GOVERNANCE_CONFIG[
+                "governance_source"
+            ],
+        "model_version":
+            AUTONOMOUS_GOVERNANCE_CONFIG[
                 "model_version"
             ],
     }
@@ -6472,6 +6512,12 @@ Use this exact JSON structure:
                 profile
             )
 
+            profile[
+                "autonomous_governance"
+            ] = build_autonomous_governance(
+                profile
+            )
+
             metrics["status"] = "success"
 
             logger.info(
@@ -7219,6 +7265,33 @@ Use this exact JSON structure:
                         {},
                     ).get(
                         "orchestration_status",
+                    )
+                ),
+
+                governance_strength=(
+                    profile.get(
+                        "autonomous_governance",
+                        {},
+                    ).get(
+                        "governance_strength",
+                    )
+                ),
+
+                governance_entries=(
+                    profile.get(
+                        "autonomous_governance",
+                        {},
+                    ).get(
+                        "governance_entries",
+                    )
+                ),
+
+                governance_status=(
+                    profile.get(
+                        "autonomous_governance",
+                        {},
+                    ).get(
+                        "governance_status",
                     )
                 ),
 
