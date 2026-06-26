@@ -135,6 +135,17 @@ def health():
         "status": "ok"
     }
 
+@app.get("/ready")
+def ready():
+    """
+    Readiness probe.
+
+    Indicates that the API process has started and is ready
+    to accept requests.
+    """
+    return {
+        "status": "ready"
+    }
 
 @app.get("/auth/history")
 def get_history(
