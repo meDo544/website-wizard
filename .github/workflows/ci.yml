@@ -54,6 +54,21 @@ jobs:
         run: |
           python -m pytest -m unit -q
 
+      - name: Create temporary CI .env
+        run: |
+          cat <<EOF > .env
+          POSTGRES_DB=level6db
+          POSTGRES_USER=ww_admin
+          POSTGRES_PASSWORD=test_password
+          DATABASE_URL=postgresql+psycopg://ww_admin:test_password@postgres:5432/level6db
+          EOF
+
       - name: Validate Docker Compose configuration
         run: |
           docker compose config --quiet
+
+      - name: Clean up temporary .env
+        if: always()
+        run: |
+          rm -f .env
+
