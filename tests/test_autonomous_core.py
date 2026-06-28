@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import pytest
+
 
 def get_connection():
     database_url = os.getenv("DATABASE_URL")
@@ -24,6 +26,7 @@ def get_connection():
     return psycopg2.connect(database_url)
 
 
+@pytest.mark.integration
 def test_autonomous_core_exists():
     connection = get_connection()
 
@@ -50,6 +53,7 @@ def test_autonomous_core_exists():
         connection.close()
 
 
+@pytest.mark.integration
 def test_autonomous_core_fields():
     connection = get_connection()
 

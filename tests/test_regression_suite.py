@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import pytest
+
 
 def get_connection():
     database_url = os.getenv("DATABASE_URL")
@@ -31,6 +33,7 @@ REGRESSION_PROJECTS = [
 ]
 
 
+@pytest.mark.integration
 def test_regression_projects_exist():
     connection = get_connection()
 
@@ -55,6 +58,7 @@ def test_regression_projects_exist():
         connection.close()
 
 
+@pytest.mark.integration
 def test_regression_projects_have_metadata():
     connection = get_connection()
 

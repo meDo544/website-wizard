@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import pytest
+
 
 def get_connection():
     database_url = os.getenv("DATABASE_URL")
@@ -24,6 +26,7 @@ def get_connection():
     return psycopg2.connect(database_url)
 
 
+@pytest.mark.integration
 def test_metadata_integrity():
     connection = get_connection()
 
