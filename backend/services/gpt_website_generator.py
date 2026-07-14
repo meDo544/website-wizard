@@ -188,7 +188,6 @@ VALID_TEMPLATE_NAMES = {
     "luxury",
 }
 
-
 INDUSTRY_TEMPLATE_MAP = {
     "ecommerce": "modern",
     "restaurant": "luxury",
@@ -200,6 +199,31 @@ INDUSTRY_TEMPLATE_MAP = {
     "saas": "modern",
     "nonprofit": "minimal",
     "general": "modern",
+}
+
+VALID_LAYOUT_TYPES = {
+    "authority",
+    "catalog",
+    "product",
+    "visual",
+    "trust",
+    "mission",
+    "general",
+}
+
+
+INDUSTRY_LAYOUT_MAP = {
+    "consultant": "authority",
+    "legal": "authority",
+    "medical": "trust",
+    "contractor": "authority",
+    "restaurant": "visual",
+    "hotel": "visual",
+    "ecommerce": "catalog",
+    "saas": "product",
+    "agency": "product",
+    "nonprofit": "mission",
+    "general": "general",
 }
 
 def select_template_name(
@@ -226,6 +250,32 @@ def select_template_name(
     return INDUSTRY_TEMPLATE_MAP.get(
         industry,
         "modern",
+    )
+
+def select_layout_type(
+    profile: dict[str, Any],
+) -> str:
+
+    requested_layout = str(
+        profile.get(
+            "layout_type",
+            "",
+        )
+    ).strip().lower()
+
+    if requested_layout in VALID_LAYOUT_TYPES:
+        return requested_layout
+
+    industry = str(
+        profile.get(
+            "industry",
+            "general",
+        )
+    ).strip().lower()
+
+    return INDUSTRY_LAYOUT_MAP.get(
+        industry,
+        "general",
     )
 
 def get_industry_components(
@@ -7872,6 +7922,19 @@ Use this exact JSON structure:
                 select_template_name(
                     profile
                 )
+            )
+
+            profile["layout_type"] = (
+                select_layout_type(
+                    profile
+                )
+            )
+
+            print(
+                "\n=== LAYOUT DEBUG ===\n"
+                f"industry={profile.get('industry')!r}\n"
+                f"layout_type={profile.get('layout_type')!r}\n"
+                "===================="
             )
 
             _normalize_section_order(

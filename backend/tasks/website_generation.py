@@ -84,6 +84,12 @@ def generate_website_task(
         # Persist metadata
         # ------------------------------------------------
 
+        print(
+            "\n=== PERSIST DEBUG ===\n"
+            f"layout_type={profile.get('layout_type')!r}\n"
+            "====================="
+        )
+
         website.metadata_json = {
             "theme": theme,
             "profile": profile,
