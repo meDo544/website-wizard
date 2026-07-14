@@ -1,5 +1,6 @@
-from backend.services.templates.base import render_template
-
+from backend.services.templates.registry import (
+    render_selected_template,
+)
 
 def generate(
     profile: dict,
@@ -132,7 +133,14 @@ def generate(
     </section>
     """
 
-    return render_template(
+    return render_selected_template(
+        template_name=profile.get(
+            "template_name",
+            profile.get(
+                "theme",
+                "modern",
+            ),
+        ),
         title=profile.get(
             "business_name",
             "Electronics Store",

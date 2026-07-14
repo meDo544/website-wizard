@@ -24,11 +24,284 @@ client = OpenAI(
 DEFAULT_SECTION_ORDER = [
     "services",
     "features",
+    "products",
+    "shipping",
+    "payments",
+    "returns",
     "testimonials",
     "faqs",
     "contact",
     "cta",
 ]
+
+INDUSTRY_SECTION_RULES = {
+
+    "ecommerce": [
+        "services",
+        "features",
+        "products",
+        "shipping",
+        "payments",
+        "returns",
+        "testimonials",
+        "faqs",
+        "contact",
+        "cta",
+    ],
+
+    "restaurant": [
+        "services",
+        "features",
+        "testimonials",
+        "contact",
+        "cta",
+    ],
+
+    "consultant": [
+        "services",
+        "testimonials",
+        "features",
+        "faqs",
+        "contact",
+        "cta",
+    ],
+
+    "contractor": [
+        "services",
+        "testimonials",
+        "features",
+        "faqs",
+        "contact",
+        "cta",
+    ],
+
+    "medical": [
+        "services",
+        "features",
+        "testimonials",
+        "contact",
+        "cta",
+    ],
+
+    "legal": [
+        "services",
+        "testimonials",
+        "features",
+        "faqs",
+        "contact",
+        "cta",
+    ],
+
+    "agency": [
+        "services",
+        "features",
+        "testimonials",
+        "faqs",
+        "contact",
+        "cta",
+    ],
+
+    "saas": [
+        "features",
+        "services",
+        "testimonials",
+        "faqs",
+        "contact",
+        "cta",
+    ],
+
+    "nonprofit": [
+        "features",
+        "testimonials",
+        "services",
+        "contact",
+        "cta",
+    ],
+
+    "general": DEFAULT_SECTION_ORDER,
+}
+
+INDUSTRY_COMPONENTS = {
+
+    "ecommerce": [
+        "products",
+        "shipping",
+        "payments",
+        "returns",
+    ],
+
+    "restaurant": [
+        "menu",
+        "reservations",
+        "hours",
+    ],
+
+    "medical": [
+        "treatments",
+        "insurance",
+        "appointments",
+    ],
+
+    "contractor": [
+        "projects",
+        "service_areas",
+        "estimates",
+    ],
+
+    "consultant": [
+        "case_studies",
+        "process",
+        "booking",
+    ],
+
+    "agency": [
+        "portfolio",
+        "case_studies",
+        "process",
+    ],
+
+    "legal": [
+        "practice_areas",
+        "attorneys",
+        "consultation",
+    ],
+
+    "saas": [
+        "pricing",
+        "integrations",
+        "demo",
+    ],
+
+    "nonprofit": [
+        "impact",
+        "donate",
+        "volunteer",
+    ],
+
+    "general": [],
+}
+
+VALID_TEMPLATE_NAMES = {
+    "modern",
+    "classic",
+    "minimal",
+    "luxury",
+}
+
+
+INDUSTRY_TEMPLATE_MAP = {
+    "ecommerce": "modern",
+    "restaurant": "luxury",
+    "medical": "classic",
+    "legal": "classic",
+    "contractor": "classic",
+    "consultant": "classic",
+    "agency": "modern",
+    "saas": "modern",
+    "nonprofit": "minimal",
+    "general": "modern",
+}
+
+def select_template_name(
+    profile: dict[str, Any],
+) -> str:
+
+    requested_template = str(
+        profile.get(
+            "template_name",
+            "",
+        )
+    ).strip().lower()
+
+    if requested_template in VALID_TEMPLATE_NAMES:
+        return requested_template
+
+    industry = str(
+        profile.get(
+            "industry",
+            "general",
+        )
+    ).strip().lower()
+
+    return INDUSTRY_TEMPLATE_MAP.get(
+        industry,
+        "modern",
+    )
+
+def get_industry_components(
+    profile: dict[str, Any],
+) -> list[str]:
+
+    industry = str(
+        profile.get(
+            "industry",
+            "general",
+        )
+    ).lower()
+
+    return list(
+        INDUSTRY_COMPONENTS.get(
+            industry,
+            [],
+        )
+    )
+
+def get_active_components(
+    profile: dict[str, Any],
+) -> dict[str, bool]:
+
+    active = {
+        component: True
+        for component in get_industry_components(
+            profile
+        )
+    }
+
+    website_identity = profile.get(
+        "website_identity",
+        {},
+    )
+
+    business_type = str(
+        website_identity.get(
+            "business_type",
+            "",
+        )
+    ).lower()
+
+    # Digital businesses generally don't require shipping/returns.
+    if (
+        "digital" in business_type
+        or "software" in business_type
+        or "download" in business_type
+    ):
+        active["shipping"] = False
+        active["returns"] = False
+
+    return active
+
+def component_is_active(
+    profile: dict[str, Any],
+    component: str,
+) -> bool:
+
+    active_components = profile.get(
+        "active_components",
+        {},
+    )
+
+    if not isinstance(
+        active_components,
+        dict,
+    ):
+        return False
+
+    return bool(
+        active_components.get(
+            component,
+            False,
+        )
+    )
 
 VALID_CONVERSION_STRATEGIES = {
     "restaurant",
@@ -37,6 +310,8 @@ VALID_CONVERSION_STRATEGIES = {
     "contractor",
     "agency",
     "medical",
+    "ecommerce",
+    "purchase",
     "general",
 }
 
@@ -2065,37 +2340,75 @@ def _extract_usage(response: Any) -> dict[str, int]:
         ),
     }
 
+def normalize_cta_type(cta_type: str | None) -> str:
+    if not cta_type:
+        return "general"
+
+    normalized = str(cta_type).strip().lower().replace("-", "_").replace(" ", "_")
+    return CTA_TYPE_ALIASES.get(normalized, normalized)
+
+def normalize_offer_type(offer_type: str | None) -> str:
+    if not offer_type:
+        return "general"
+
+    normalized = (
+        str(offer_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return OFFER_TYPE_ALIASES.get(normalized, normalized)
+
+def _normalize_trust_type(trust_type: str | None) -> str:
+    if not trust_type:
+        return "general"
+
+    normalized = (
+        str(trust_type)
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    return TRUST_TYPE_ALIASES.get(normalized, normalized)
+
 def _normalize_section_order(
     profile: dict[str, Any],
 ) -> None:
-    section_order = profile.get(
-        "section_order",
+
+    industry = str(
+        profile.get(
+            "industry",
+            "general",
+        )
+    ).lower()
+
+    default_order = INDUSTRY_SECTION_RULES.get(
+        industry,
         DEFAULT_SECTION_ORDER,
     )
 
-    if not isinstance(section_order, list):
-        profile["section_order"] = DEFAULT_SECTION_ORDER
-        return
-
-    normalized_order = [
-        section
-        for section in section_order
-        if section in DEFAULT_SECTION_ORDER
-    ]
-
-    profile["section_order"] = (
-        normalized_order
-        or DEFAULT_SECTION_ORDER
-    )
+    profile["section_order"] = list(default_order)
 
 def _normalize_conversion_strategy(
     profile: dict[str, Any],
 ) -> None:
 
+    website_identity = profile.get(
+        "website_identity",
+        {},
+    )
+
     strategy = str(
-        profile.get(
-            "conversion_strategy",
-            "general",
+        website_identity.get(
+            "cta_strategy",
+            profile.get(
+                "conversion_strategy",
+                "general",
+            ),
         )
     ).lower()
 
@@ -2103,6 +2416,12 @@ def _normalize_conversion_strategy(
         strategy = "general"
 
     profile["conversion_strategy"] = strategy
+
+    if isinstance(
+        website_identity,
+        dict,
+    ):
+        website_identity["cta_strategy"] = strategy
 
 def _normalize_hero_variants(
     profile: dict[str, Any],
@@ -2948,6 +3267,172 @@ def normalize_trust_type(
         normalized,
         normalized,
     )
+
+def _normalize_products(
+    profile: dict[str, Any],
+) -> None:
+
+    products = profile.get(
+        "products",
+        [],
+    )
+
+    if not isinstance(products, list):
+        profile["products"] = []
+        return
+
+    normalized = []
+
+    for product in products:
+
+        if not isinstance(product, dict):
+            continue
+
+        name = str(
+            product.get("name", "")
+        ).strip()
+
+        description = str(
+            product.get("description", "")
+        ).strip()
+
+        if name and description:
+
+            normalized.append(
+                {
+                    "name": name,
+                    "description": description,
+                }
+            )
+
+    profile["products"] = normalized
+
+def _business_matches(
+    business_type: str,
+    *keywords: str,
+) -> bool:
+
+    business_type = business_type.lower()
+
+    return any(
+        keyword.lower() in business_type
+        for keyword in keywords
+    )
+
+INDUSTRY_TYPES = {
+    "ecommerce",
+    "restaurant",
+    "medical",
+    "legal",
+    "contractor",
+    "consultant",
+    "agency",
+    "saas",
+    "nonprofit",
+    "general",
+}
+
+def infer_industry(
+    profile: dict[str, Any],
+) -> str:
+
+    website_identity = profile.get(
+        "website_identity",
+        {},
+    )
+
+    business_type = str(
+        website_identity.get(
+            "business_type",
+            "",
+        )
+    ).lower()
+
+    if _business_matches(
+        business_type,
+        "ecommerce",
+        "shop",
+        "store",
+        "retail",
+        "marketplace",
+    ):
+        return "ecommerce"
+
+    if _business_matches(
+        business_type,
+        "restaurant",
+        "cafe",
+        "food",
+        "pizza",
+        "bakery",
+    ):
+        return "restaurant"
+
+    if _business_matches(
+        business_type,
+        "doctor",
+        "medical",
+        "clinic",
+        "hospital",
+        "dentist",
+        "health",
+    ):
+        return "medical"
+
+    if _business_matches(
+        business_type,
+        "law",
+        "lawyer",
+        "legal",
+        "attorney",
+    ):
+        return "legal"
+
+    if _business_matches(
+        business_type,
+        "contractor",
+        "roofing",
+        "construction",
+        "electrician",
+        "plumber",
+        "plumbing",
+    ):
+        return "contractor"
+
+    if _business_matches(
+        business_type,
+        "consult",
+        "coach",
+        "advisor",
+    ):
+        return "consultant"
+
+    if _business_matches(
+        business_type,
+        "agency",
+        "marketing",
+        "creative",
+    ):
+        return "agency"
+
+    if _business_matches(
+        business_type,
+        "software",
+        "saas",
+        "platform",
+        "application",
+    ):
+        return "saas"
+
+    if _business_matches(
+        business_type,
+        "charity",
+        "foundation",
+        "nonprofit",
+    ):
+        return "nonprofit"
+
+    return "general"
 
 def normalize_social_proof_type(
     social_proof_type: str | None,
@@ -4518,6 +5003,106 @@ def _apply_selected_hero(
             "general",
         )
 
+def enforce_hero_priority_rules(
+    profile: dict[str, Any],
+) -> None:
+
+    website_identity = profile.get(
+        "website_identity",
+        {},
+    )
+
+    business_type = str(
+        website_identity.get(
+            "business_type",
+            "",
+        )
+    ).lower()
+
+    hero = profile.get(
+        "selected_hero",
+        {},
+    )
+
+    if not isinstance(
+        hero,
+        dict,
+    ):
+        return
+
+    hero_title = str(
+        hero.get(
+            "headline",
+            "",
+        )
+    )
+
+    hero_subtitle = str(
+        hero.get(
+            "subheadline",
+            "",
+        )
+    )
+
+    # ---------------------------------------------
+    # Ecommerce
+    # ---------------------------------------------
+
+    if _business_matches(
+        business_type,
+        "ecommerce",
+        "shop",
+        "store",
+        "marketplace",
+        "retail",
+    ):
+
+        hero["type"] = "benefit"
+
+        profile["selected_hero_type"] = "benefit"
+
+        profile["conversion_strategy"] = "purchase"
+
+        profile["hero_title"] = hero_title
+
+        profile["hero_subtitle"] = hero_subtitle
+
+    # ---------------------------------------------
+    # Consultant
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "consult",
+        "coach",
+        "advisor",
+    ):
+
+        hero["type"] = "authority"
+
+        profile["selected_hero_type"] = "authority"
+
+        profile["conversion_strategy"] = "consultation"
+
+    # ---------------------------------------------
+    # Restaurant
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "restaurant",
+        "cafe",
+        "food",
+    ):
+
+        hero["type"] = "luxury"
+
+        profile["selected_hero_type"] = "luxury"
+
+        profile["conversion_strategy"] = "booking"
+
+    profile["selected_hero"] = hero
+
 def _apply_selected_cta(
     profile: dict[str, Any],
 ) -> None:
@@ -4536,6 +5121,87 @@ def _apply_selected_cta(
     profile["selected_cta_type"] = selected_cta["type"]
     profile["selected_cta"] = selected_cta
     profile["cta"] = selected_cta["text"]
+
+def enforce_cta_priority_rules(
+    profile: dict[str, Any],
+) -> None:
+    website_identity = profile.get(
+        "website_identity",
+        {},
+    )
+
+    business_type = str(
+        website_identity.get(
+            "business_type",
+            "",
+        )
+    ).lower()
+
+    primary_cta = str(
+        website_identity.get(
+            "primary_cta",
+            "",
+        )
+    ).lower()
+
+    visible_cta = str(
+        profile.get("cta", "")
+    ).lower()
+
+    print("\n=== CTA DEBUG ===")
+    print("business_type:", business_type)
+    print("website_identity.primary_cta:", website_identity.get("primary_cta"))
+    print("profile.cta:", profile.get("cta"))
+    print("selected_cta:", profile.get("selected_cta"))
+    print("=================\n")
+
+    ecommerce_keywords = (
+        "ecommerce",
+        "shop",
+        "store",
+        "marketplace",
+        "retail",
+    )
+
+    advisory_keywords = (
+        "consult",
+        "consultation",
+        "demo",
+        "recommend",
+        "expert",
+        "support",
+        "advisor",
+    )
+
+    if any(
+        keyword in business_type
+        for keyword in ecommerce_keywords
+    ):
+
+        if any(
+            keyword in visible_cta
+            for keyword in advisory_keywords
+        ):
+
+            website_identity["primary_cta"] = "Shop Now"
+            website_identity["secondary_cta"] = "Browse Products"
+            website_identity["cta_strategy"] = "purchase"
+
+            profile["cta"] = "Shop Now"
+
+            selected_cta = profile.get(
+                "selected_cta",
+                {},
+            )
+
+            if isinstance(
+                selected_cta,
+                dict,
+            ):
+                selected_cta["text"] = "Shop Now"
+                selected_cta["type"] = "purchase"
+
+    profile["website_identity"] = website_identity
 
 def _apply_selected_offer(
     profile: dict[str, Any],
@@ -4560,6 +5226,91 @@ def _apply_selected_offer(
         selected_offer
     )
 
+def enforce_offer_priority_rules(
+    profile: dict[str, Any],
+) -> None:
+
+    website_identity = profile.get(
+        "website_identity",
+        {},
+    )
+
+    business_type = str(
+        website_identity.get(
+            "business_type",
+            "",
+        )
+    ).lower()
+
+    offer = profile.get(
+        "selected_offer",
+        {},
+    )
+
+    if not isinstance(
+        offer,
+        dict,
+    ):
+        return
+
+    headline = str(
+        offer.get(
+            "headline",
+            "",
+        )
+    )
+
+    # ---------------------------------------------
+    # Ecommerce
+    # ---------------------------------------------
+
+    if _business_matches(
+        business_type,
+        "ecommerce",
+        "shop",
+        "store",
+        "marketplace",
+        "retail",
+    ):
+
+        offer["type"] = "discount"
+
+        profile["selected_offer_type"] = "discount"
+
+    # ---------------------------------------------
+    # Consultant
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "consult",
+        "coach",
+        "advisor",
+    ):
+
+        offer["type"] = "consultation"
+
+        profile["selected_offer_type"] = "consultation"
+
+    # ---------------------------------------------
+    # Restaurant
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "restaurant",
+        "cafe",
+        "food",
+    ):
+
+        offer["type"] = "bonus"
+
+        profile["selected_offer_type"] = "bonus"
+
+    offer["headline"] = headline
+
+    profile["selected_offer"] = offer
+
 def _apply_selected_trust(
     profile: dict[str, Any],
 ) -> None:
@@ -4582,6 +5333,93 @@ def _apply_selected_trust(
     profile["selected_trust"] = (
         selected_trust
     )
+
+def enforce_trust_priority_rules(
+    profile: dict[str, Any],
+) -> None:
+
+    website_identity = profile.get(
+        "website_identity",
+        {},
+    )
+
+    business_type = str(
+        website_identity.get(
+            "business_type",
+            "",
+        )
+    ).lower()
+
+    trust = profile.get(
+        "selected_trust",
+        {},
+    )
+
+    if not isinstance(
+        trust,
+        dict,
+    ):
+        return
+
+    headline = str(
+        trust.get(
+            "headline",
+            "",
+        )
+    )
+
+    if any(
+        keyword in business_type
+        for keyword in (
+            "ecommerce",
+            "shop",
+            "store",
+            "marketplace",
+            "retail",
+        )
+    ):
+        trust["type"] = "reviews"
+        profile["selected_trust_type"] = "reviews"
+
+    elif any(
+        keyword in business_type
+        for keyword in (
+            "consult",
+            "coach",
+            "advisor",
+        )
+    ):
+        trust["type"] = "experience"
+        profile["selected_trust_type"] = "experience"
+
+    elif any(
+        keyword in business_type
+        for keyword in (
+            "medical",
+            "clinic",
+            "dentist",
+            "doctor",
+            "health",
+        )
+    ):
+        trust["type"] = "certification"
+        profile["selected_trust_type"] = "certification"
+
+    elif any(
+        keyword in business_type
+        for keyword in (
+            "contractor",
+            "construction",
+            "roofing",
+            "plumbing",
+            "electrician",
+        )
+    ):
+        trust["type"] = "guarantee"
+        profile["selected_trust_type"] = "guarantee"
+
+    trust["headline"] = headline
+    profile["selected_trust"] = trust
 
 def _apply_selected_social_proof(
     profile: dict[str, Any],
@@ -4608,6 +5446,137 @@ def _apply_selected_social_proof(
         "selected_social_proof"
     ] = selected_social_proof
 
+def enforce_social_proof_priority_rules(
+    profile: dict[str, Any],
+) -> None:
+
+    website_identity = profile.get(
+        "website_identity",
+        {},
+    )
+
+    business_type = str(
+        website_identity.get(
+            "business_type",
+            "",
+        )
+    ).lower()
+
+    social_proof = profile.get(
+        "selected_social_proof",
+        {},
+    )
+
+    if not isinstance(
+        social_proof,
+        dict,
+    ):
+        return
+
+    headline = str(
+        social_proof.get(
+            "headline",
+            "",
+        )
+    )
+
+    # ---------------------------------------------
+    # Ecommerce
+    # ---------------------------------------------
+
+    if _business_matches(
+        business_type,
+        "ecommerce",
+        "shop",
+        "store",
+        "marketplace",
+        "retail",
+    ):
+
+        social_proof["type"] = "customers"
+
+        profile["selected_social_proof_type"] = (
+            "customers"
+        )
+
+    # ---------------------------------------------
+    # Consultant
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "consult",
+        "coach",
+        "advisor",
+    ):
+
+        social_proof["type"] = "projects"
+
+        profile["selected_social_proof_type"] = (
+            "projects"
+        )
+
+    # ---------------------------------------------
+    # Medical
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "medical",
+        "clinic",
+        "doctor",
+        "dentist",
+        "health",
+    ):
+
+        social_proof["type"] = "patients"
+
+        profile["selected_social_proof_type"] = (
+            "patients"
+        )
+
+    # ---------------------------------------------
+    # Restaurant
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "restaurant",
+        "cafe",
+        "food",
+    ):
+
+        social_proof["type"] = "reviews"
+
+        profile["selected_social_proof_type"] = (
+            "reviews"
+        )
+
+    # ---------------------------------------------
+    # Contractor
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "contractor",
+        "construction",
+        "roofing",
+        "plumbing",
+        "electrician",
+    ):
+
+        social_proof["type"] = "projects"
+
+        profile["selected_social_proof_type"] = (
+            "projects"
+        )
+
+    social_proof["headline"] = headline
+
+    profile["selected_social_proof"] = (
+        social_proof
+    )
+
 def _apply_selected_risk_reversal(
     profile: dict[str, Any],
 ) -> None:
@@ -4633,6 +5602,137 @@ def _apply_selected_risk_reversal(
         "selected_risk_reversal"
     ] = selected_risk_reversal
 
+def enforce_risk_reversal_priority_rules(
+    profile: dict[str, Any],
+) -> None:
+
+    website_identity = profile.get(
+        "website_identity",
+        {},
+    )
+
+    business_type = str(
+        website_identity.get(
+            "business_type",
+            "",
+        )
+    ).lower()
+
+    risk_reversal = profile.get(
+        "selected_risk_reversal",
+        {},
+    )
+
+    if not isinstance(
+        risk_reversal,
+        dict,
+    ):
+        return
+
+    headline = str(
+        risk_reversal.get(
+            "headline",
+            "",
+        )
+    )
+
+    # ---------------------------------------------
+    # Ecommerce
+    # ---------------------------------------------
+
+    if _business_matches(
+        business_type,
+        "ecommerce",
+        "shop",
+        "store",
+        "marketplace",
+        "retail",
+    ):
+
+        risk_reversal["type"] = "guarantee"
+
+        profile["selected_risk_reversal_type"] = (
+            "guarantee"
+        )
+
+    # ---------------------------------------------
+    # Consultant
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "consult",
+        "coach",
+        "advisor",
+    ):
+
+        risk_reversal["type"] = "consultation"
+
+        profile["selected_risk_reversal_type"] = (
+            "consultation"
+        )
+
+    # ---------------------------------------------
+    # Medical
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "medical",
+        "clinic",
+        "doctor",
+        "dentist"
+        "health",
+    ):
+
+        risk_reversal["type"] = "assurance"
+
+        profile["selected_risk_reversal_type"] = (
+            "assurance"
+        )
+
+    # ---------------------------------------------
+    # Restaurant
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "restaurant",
+        "cafe",
+        "food",
+    ):
+
+        risk_reversal["type"] = "freshness"
+
+        profile["selected_risk_reversal_type"] = (
+            "freshness"
+        )
+
+    # ---------------------------------------------
+    # Contractor
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "contractor",
+        "construction",
+        "roofing",
+        "plumbing",
+        "electrician",
+    ):
+
+        risk_reversal["type"] = "warranty"
+
+        profile["selected_risk_reversal_type"] = (
+            "warranty"
+        )
+
+    risk_reversal["headline"] = headline
+
+    profile["selected_risk_reversal"] = (
+        risk_reversal
+    )
+
 def _apply_selected_urgency(
     profile: dict[str, Any],
 ) -> None:
@@ -4657,6 +5757,138 @@ def _apply_selected_urgency(
     profile[
         "selected_urgency"
     ] = selected_urgency
+
+def enforce_urgency_priority_rules(
+    profile: dict[str, Any],
+) -> None:
+
+    website_identity = profile.get(
+        "website_identity",
+        {},
+    )
+
+    business_type = str(
+        website_identity.get(
+            "business_type",
+            "",
+        )
+    ).lower()
+
+    urgency = profile.get(
+        "selected_urgency",
+        {},
+    )
+
+    if not isinstance(
+        urgency,
+        dict,
+    ):
+        return
+
+    headline = str(
+        urgency.get(
+            "headline",
+            "",
+        )
+    )
+
+    # ---------------------------------------------
+    # Ecommerce
+    # ---------------------------------------------
+
+    if _business_matches(
+        business_type,
+        "ecommerce",
+        "shop",
+        "store",
+        "marketplace",
+        "retail",
+    ):
+
+        urgency["type"] = "limited_stock"
+
+        profile["selected_urgency_type"] = (
+            "limited_stock"
+        )
+
+    # ---------------------------------------------
+    # Consultant
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "consult",
+        "coach",
+        "advisor",
+    ):
+
+        urgency["type"] = "limited_slots"
+
+        profile["selected_urgency_type"] = (
+            "limited_slots"
+        )
+
+    # ---------------------------------------------
+    # Medical
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "medical",
+        "clinic",
+        "doctor",
+        "dentist",
+        "health",
+    ):
+
+        urgency["type"] = "appointments"
+
+        profile["selected_urgency_type"] = (
+            "appointments"
+        )
+
+    # ---------------------------------------------
+    # Restaurant
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "restaurant",
+        "cafe",
+        "food",
+    ):
+
+        urgency["type"] = "today"
+
+        profile["selected_urgency_type"] = (
+            "today"
+        )
+
+    # ---------------------------------------------
+    # Contractor
+    # ---------------------------------------------
+
+    elif _business_matches(
+        business_type,
+        "contractor",
+        "construction",
+        "roofing",
+        "plumbing",
+        "electrician",
+    ):
+
+        urgency["type"] = "seasonal"
+
+        profile["selected_urgency_type"] = (
+            "seasonal"
+        )
+
+    headline = headline.strip()
+
+    if headline:
+        urgency["headline"] = headline
+
+    profile["selected_urgency"] = urgency
 
 def _apply_selected_objection(
     profile: dict[str, Any],
@@ -5201,11 +6433,79 @@ Generate at least:
 - 3 testimonials
 - 3 FAQs
 
+For ecommerce businesses also generate:
+
+- 3 featured products
+- payment information
+- returns information
+
+For ecommerce businesses selling physical products also generate:
+
+- shipping information
+
+Returns information should include:
+- headline
+- one short description
+
+Payment information should include:
+- headline
+- one short description
+
+Shipping should include:
+- headdline
+- one short description
+
 Also generate a brand identity:
 - primary color as a hex code
 - secondary color as a hex code
 - font family suggestion
 - logo text
+
+Business Identity Rules
+
+Generate one canonical business identity for the website.
+
+The following fields represent the single source of truth for the business
+
+- business_name
+- branding.logo_text
+- website_identity.domain
+- website_identity.website_url
+- contact.email
+- contact.phone
+- contact.address
+
+Use these values consistently throughout the entire generated website.
+
+Requirements:
+
+- The business name must have one consistent spelling.
+- The logo text must match the business name or be an obvious branded abbreviation.
+- The email address must use a domain derived from the business name.
+- Do not invent alternate spellings of the business name.
+- Do not invent different email domains in different sections.
+- The footer, contact section, hero section, testimonials, FAQs, and metadata must all refer to the same business identity.
+
+Website Identity Classification
+
+Populate the website_identity fields accurately.
+
+industry:
+Broad industry category.
+
+business_type:
+Specific business specialization.
+
+target_audience:
+Primary audience most likely to convert.
+
+These classifications should guide:
+- messaging
+- hero selection
+- CTA selection
+- FAQ generation
+- testimonials
+- conversion strategy
 
 Also generate a conversion-focused landing page section order.
 
@@ -5302,6 +6602,191 @@ Each CTA variant must contain:
   "type": "",
   "text": ""
 }
+
+CTA Intelligence Rules
+
+Choose CTAs that maximize conversions for the specific business.
+
+The selected CTA must match:
+
+- industry
+- business_type
+- target_audience
+- conversion_strategy
+
+Avoid generic CTAs when a more specific action is appropriate.
+
+Examples:
+
+Pizza Restaurant
+- Order Online
+- View Menu
+
+Law Firm
+- Schedule a Consultation
+- Speak with an Attorney
+
+Dentist
+- Book an Appointment
+- Call Today
+
+SaaS
+- Start Free Trial
+- Request a Demo
+
+Contractor
+- Request a Free Estimate
+- Schedule an Inspection
+
+E-commerce
+- Shop Now
+- Browse Products
+
+Agency
+- Request a Proposal
+- Book a Strategy Call
+
+Use natural language that reflects the business rather than repeating the examples verbatim.
+
+CTA Priority Rules
+
+When selecting the primary_cta and generating CTA variants, prioritize the actions most likely to convert for the business.
+
+Restaurant / Pizza Shop
+Priority:
+1. Order Online
+2. View Menu
+3. Reserve a Table
+
+Law Firm
+Priority:
+1. Schedule a Consultation
+2. Call Now
+3. Speak with an Attorney
+
+E-commerce Store
+Priority:
+1. Shop Now
+2. Browse Products
+3. View Collection
+
+Medical Practice
+Priority:
+1. Book an Appointment
+2. Call the Clinic
+3. Request a Consultation
+
+Contractor
+Priority:
+1. Request a Free Quote
+2. Schedule an Inspection
+3. Contact Our Team
+
+SaaS
+Priority:
+1. Start Free Trial
+2. Request a Demo
+3. Contact Sales
+
+Agency
+Priority:
+1. Request a Proposal
+2. Book a Strategy Call
+3. Contact Our Team
+
+When the business clearly matches one of the categories above, the selected primary_cta should normally come from that category's priority list.
+
+For E-commerce Store, Online Store, Retail, Marketplace, or Product Shop businesses:
+
+When business_type is Ecommerce Store, Online Store, Marketplace, Retail Store, Product Store, or Shop:
+
+The primary_cta MUST represent a purchasing action.
+
+Preferred primary_cta examples:
+
+- Shop Now
+- Browse Products
+- View Collection
+- Start Shopping
+- Order Now
+
+Do not use consultation, appointment, demo, inspection, strategy session, or product recommendation as the primary_cta unless the business is explicitly a consulting or advisory business.
+
+The primary_cta must match the selected cta_strategy.
+
+Examples:
+
+purchase
+→ Shop Now
+→ Browse Products
+→ Order Online
+
+consultation
+→ Book Consultation
+→ Schedule Consultation
+
+appointment
+→ Book Appointment
+
+quote
+→ Request Quote
+
+trial
+→ Start Free Trial
+
+demo
+→ Request Demo
+
+Use product recommendation, shopping assistance, consultation, or support CTAs only as secondary_cta unless the business is explicitly a concierge shopping, personal shopper, or product advisory service.
+
+If business_type contains ecommerce, shop, store, marketplace, retail
+and primary_cta is consultation/demo/support/advisory/recommendation-style,
+replace primary_cta with "Shop Now"
+replace secondary_cta with "Browse Products"
+replace cta_strategy with "purchase"
+
+Only choose a different CTA if the generated business model clearly requires it.
+
+Choose the CTA that best matches:
+
+- industry
+- business_type
+- target_audience
+- conversion_strategy
+
+Avoid generic calls-to-action when a more specific business action is available.
+
+The selected primary_cta should represent the highest-converting action for that business.
+
+The visible CTA section must use website_identity.primary_cta, not a different CTA phrase.
+
+Also generate:
+
+offer_variants
+
+offer_variants is REQUIRED.
+
+You must always generate at least 3 offer_variants.
+
+Valid offer types:
+
+- discount
+- consultation
+- audit
+- quote
+- trial
+- demo
+- bonus
+- appointment
+- general
+
+Each offer variant must contain:
+
+{
+  "type": "",
+  "headline": ""
+}
+
 
 Also generate:
 
@@ -5649,6 +7134,23 @@ selected_hero_type
 
 Choose the hero most likely to convert for the business.
 
+Primary CTA Consistency
+
+The selected primary_cta represents the primary conversion goal of the website.
+
+Use it consistently in:
+
+- Hero section
+- Primary CTA section
+- Primary action buttons
+- Navigation (where appropriate)
+
+The secondary_cta should support the primary_cta without competing with it.
+
+Avoid presenting multiple conflicting primary actions on the same page unless clearly justified by the business model.
+
+Populate website_identity.primary_cta, website_identity.secondary_cta, and website_identity.cta_strategy using the selected conversion goal.
+
 Use this exact JSON structure:
 
 {
@@ -5661,6 +7163,24 @@ Use this exact JSON structure:
 
   "business_name": "",
   "tagline": "",
+
+  "website_identity": {
+    "domain": "",
+    "website_url": "",
+    "primary_cta": "",
+    "secondary_cta": "",
+    "cta_strategy": "",
+    "cta_headline": "",
+    "industry": "",
+    "business_type": "",
+    "target_audience": ""
+  },
+
+  "contact": {
+    "phone": "",
+    "email": "",
+    "address": ""
+  },
 
   "hero_variants": [
     {
@@ -5698,6 +7218,36 @@ Use this exact JSON structure:
     "",
     ""
   ],
+
+  "products": [
+    {
+      "name": "",
+      "description": ""
+    },
+    {
+      "name": "",
+      "description": ""
+    },
+    {
+      "name": "",
+      "description": ""
+    }
+  ],
+
+  "shipping": {
+    "headline": "",
+    "description": ""
+  },
+
+  "payments": {
+    "headline": "",
+    "description": ""
+  },
+
+  "returns": {
+    "headline": "",
+    "description": ""
+  },
 
   "testimonials": [
     {
@@ -6314,6 +7864,16 @@ Use this exact JSON structure:
 
             profile["branding"] = branding
 
+            profile["industry"] = infer_industry(
+                profile
+            )
+
+            profile["template_name"] = (
+                select_template_name(
+                    profile
+                )
+            )
+
             _normalize_section_order(
                 profile
             )
@@ -6390,7 +7950,15 @@ Use this exact JSON structure:
                 profile
             )
 
+            _normalize_products(
+                profile
+            )
+
             _apply_selected_hero(
+                profile
+            )
+
+            enforce_hero_priority_rules(
                 profile
             )
 
@@ -6398,7 +7966,15 @@ Use this exact JSON structure:
                 profile
             )
 
+            enforce_cta_priority_rules(
+                profile
+            )
+
             _apply_selected_offer(
+                profile
+            )
+
+            enforce_offer_priority_rules(
                 profile
             )
 
@@ -6406,7 +7982,15 @@ Use this exact JSON structure:
                 profile
             )
 
+            enforce_trust_priority_rules(
+                profile
+            )
+
             _apply_selected_social_proof(
+                profile
+            )
+
+            enforce_social_proof_priority_rules(
                 profile
             )
 
@@ -6414,7 +7998,15 @@ Use this exact JSON structure:
                 profile
             )
 
+            enforce_risk_reversal_priority_rules(
+                profile
+            )
+
             _apply_selected_urgency(
+                profile
+            )
+
+            enforce_urgency_priority_rules(
                 profile
             )
 
@@ -6654,6 +8246,18 @@ Use this exact JSON structure:
                 "autonomous_core"
             ] = build_autonomous_core(
                 profile
+            )
+
+            profile["industry_components"] = (
+                get_industry_components(
+                    profile
+                )
+            )
+
+            profile["active_components"] = (
+                get_active_components(
+                    profile
+                )
             )
 
             metrics["status"] = "success"
@@ -7521,6 +9125,16 @@ Use this exact JSON structure:
 
             profile["_usage"] = usage
             profile["_model"] = model
+
+            print("\n=== INDUSTRY DEBUG ===")
+            print("business_type:", profile["website_identity"]["business_type"])
+            print("industry:", profile.get("industry"))
+            print("======================\n")
+
+            print("\n=== TEMPLATE DEBUG ===")
+            print("industry =", profile.get("industry"))
+            print("template_name =", profile.get("template_name"))
+            print("======================\n")
 
             return profile
 

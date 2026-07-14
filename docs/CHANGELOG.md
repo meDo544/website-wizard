@@ -12,6 +12,105 @@ MAJOR.MINOR.PATCH
 
 ---
 
+# [v1.0.4] — CI/CD Automation
+
+**Release Date:** June 2026
+
+---
+
+## Highlights
+
+* Introduced GitHub Actions Continuous Integration workflow.
+* Added automated Python source compilation.
+* Added CI-safe unit testing with `pytest`.
+* Refactored tests using a shared `conftest.py` fixture.
+* Separated unit and integration tests using `pytest` markers.
+* Added Docker Compose configuration validation.
+* Added pip dependency caching for faster CI execution.
+
+---
+
+## Validation
+
+* Unit Tests: 1 passed
+* Integration Tests: 5 passed
+* Full Test Suite: 6 passed
+* GitHub Actions workflow executed successfully on GitHub-hosted runners.
+
+---
+
+## Impact
+
+Completed the Continuous Integration foundation for Website Wizard.
+
+---
+
+# [v1.0.3] — Observability
+
+**Release Date:** June 2026
+
+---
+
+## Highlights
+
+* Added Prometheus metrics.
+* Added Grafana dashboards.
+* Added health and readiness endpoints.
+* Added alerting rules.
+* Introduced `OBSERVABILITY.md` documentation.
+
+---
+
+## Impact
+
+Improved operational monitoring and production visibility.
+
+---
+
+# [v1.0.2] — Automated Testing
+
+**Release Date:** June 2026
+
+---
+
+## Highlights
+
+* Introduced automated testing using `pytest`.
+* Added database connectivity tests.
+* Added metadata integrity validation.
+* Added Autonomous Core validation.
+* Added regression test suite.
+
+---
+
+## Impact
+
+Established repeatable automated validation for the platform.
+
+---
+
+# [v1.0.1] — Documentation Foundation
+
+**Release Date:** June 2026
+
+---
+
+## Highlights
+
+* Created comprehensive project documentation.
+* Added architecture documentation.
+* Added deployment, operations, recovery, and security guides.
+* Added API and database documentation.
+* Added contribution guidelines and release documentation.
+
+---
+
+## Impact
+
+Established the documentation baseline for future development.
+
+---
+
 # [v1.0.0] — Production Release
 
 **Release Date:** June 2026
@@ -309,16 +408,18 @@ These foundational capabilities enabled the autonomous pipeline introduced throu
 
 # Future Releases
 
-## v1.0.x
+## v1.1.x
 
 Planned focus:
 
-* Bug fixes
-* Stability improvements
-* Documentation updates
-* Automated testing
-* CI/CD enhancements
-* Operational improvements
+- Enhanced AI website generation
+- Multi-page website generation
+- Improved templates
+- SEO enhancements
+- Theme management
+- Analytics integration
+- Export capabilities
+- Performance optimization
 
 ---
 
@@ -351,4 +452,5 @@ When updating this file:
 
 Website Wizard evolved from an AI-powered website generator into a production-ready platform through incremental engineering, continuous validation, and disciplined release management.
 
-Version **v1.0.0** marks the completion of the initial production architecture and establishes the baseline for all future development.
+Version v1.0.4 completes the engineering foundation of Website Wizard by adding documentation, automated testing, observability, and Continuous Integration. Future development will focus primarily on expanding customer-facing capabilities while building upon this stable engineering platform.
+

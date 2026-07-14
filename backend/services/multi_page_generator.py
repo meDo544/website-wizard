@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from backend.services.templates.base import render_template
+from backend.services.templates.registry import (
+    render_selected_template,
+)
 from backend.services.landing_page_generator import (
     generate_landing_page_content,
 )
@@ -49,7 +51,14 @@ def generate_home_page(
         profile=profile,
     )
 
-    return render_template(
+    return render_selected_template(
+        template_name=profile.get(
+            "template_name",
+            profile.get(
+                "theme",
+                "modern",
+            ),
+        ),
         title=profile.get(
             "business_name",
             "Website",
@@ -81,7 +90,6 @@ def generate_home_page(
             {},
         ),
     )
-
 
 def generate_about_page(
     *,
@@ -116,7 +124,14 @@ def generate_about_page(
     </section>
     """
 
-    return render_template(
+    return render_selected_template(
+        template_name=profile.get(
+            "template_name",
+            profile.get(
+                "theme",
+                "modern",
+            ),
+        ),
         title=profile.get(
             "business_name",
             "About Us",
@@ -139,7 +154,6 @@ def generate_about_page(
             {},
         ),
     )
-
 
 def generate_services_page(
     *,
@@ -179,7 +193,14 @@ def generate_services_page(
     </section>
     """
 
-    return render_template(
+    return render_selected_template(
+        template_name=profile.get(
+            "template_name",
+            profile.get(
+                "theme",
+                "modern",
+            ),
+        ),
         title=profile.get(
             "business_name",
             "Services",
@@ -205,7 +226,6 @@ def generate_services_page(
             {},
         ),
     )
-
 
 def generate_contact_page(
     *,
@@ -244,7 +264,14 @@ def generate_contact_page(
     </section>
     """
 
-    return render_template(
+    return render_selected_template(
+        template_name=profile.get(
+            "template_name",
+            profile.get(
+                "theme",
+                "modern",
+            ),
+        ),
         title=profile.get(
             "business_name",
             "Contact",
@@ -267,7 +294,6 @@ def generate_contact_page(
             {},
         ),
     )
-
 
 def generate_multi_page_site(
     *,

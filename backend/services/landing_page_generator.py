@@ -8,6 +8,10 @@ from typing import Any
 DEFAULT_SECTION_ORDER = [
     "services",
     "features",
+    "products",
+    "shipping",
+    "payments",
+    "returns",
     "testimonials",
     "faqs",
     "contact",
@@ -128,6 +132,135 @@ def render_features_section(
     """
 
 
+def render_products_section(
+    profile: dict[str, Any],
+) -> str:
+
+    products = profile.get(
+        "products",
+        [],
+    )
+
+    if not products:
+        return ""
+
+    cards = ""
+
+    for product in products:
+
+        cards += f"""
+        <div class="card">
+            <h3>{product.get("name", "")}</h3>
+            <p>{product.get("description", "")}</p>
+        </div>
+        """
+
+    return f"""
+    <section>
+        <h2>Featured Products</h2>
+
+        <div class="grid">
+            {cards}
+        </div>
+    </section>
+    """
+
+def render_shipping_section(
+    profile: dict[str, Any],
+) -> str:
+
+    from backend.services.gpt_website_generator import (
+        component_is_active,
+    )
+
+    if not component_is_active(
+        profile,
+        "shipping",
+    ):
+        return ""
+
+    shipping = profile.get(
+        "shipping",
+        {},
+    )
+
+    if not shipping:
+        return ""
+
+    return f"""
+    <section>
+        <h2>{shipping.get("headline", "Shipping")}</h2>
+
+        <p>
+            {shipping.get("description", "")}
+        </p>
+    </section>
+    """
+
+def render_payments_section(
+    profile: dict[str, Any],
+) -> str:
+
+    from backend.services.gpt_website_generator import (
+        component_is_active,
+    )
+
+    if not component_is_active(
+        profile,
+        "payments",
+    ):
+        return ""
+
+    payments = profile.get(
+        "payments",
+        {},
+    )
+
+    if not payments:
+        return ""
+
+    return f"""
+    <section>
+        <h2>{payments.get("headline", "Payments")}</h2>
+
+        <p>
+            {payments.get("description", "")}
+        </p>
+    </section>
+    """
+
+def render_returns_section(
+    profile: dict[str, Any],
+) -> str:
+
+    from backend.services.gpt_website_generator import (
+        component_is_active,
+    )
+
+    if not component_is_active(
+        profile,
+        "returns",
+    ):
+        return ""
+
+    returns = profile.get(
+        "returns",
+        {},
+    )
+
+    if not returns:
+        return ""
+
+    return f"""
+    <section>
+        <h2>{returns.get("headline", "Returns")}</h2>
+
+        <p>
+            {returns.get("description", "")}
+        </p>
+    </section>
+    """
+
 def render_testimonials_section(
     profile: dict[str, Any],
 ) -> str:
@@ -204,6 +337,10 @@ def render_cta_section(
 SECTION_RENDERERS = {
     "services": render_services_section,
     "features": render_features_section,
+    "products": render_products_section,
+    "shipping": render_shipping_section,
+    "payments": render_payments_section,
+    "returns" : render_returns_section,
     "testimonials": render_testimonials_section,
     "faqs": render_faqs_section,
     "contact": render_contact_section,

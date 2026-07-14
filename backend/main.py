@@ -50,6 +50,19 @@ from backend.services.usage_service import (
     UsageService,
 )
 
+from backend.services.gpt_website_generator import (
+    generate_business_profile,
+)
+from backend.services.landing_page_generator import (
+    generate_landing_page_content,
+)
+
+from backend.services.templates.registry import (
+    render_selected_template,
+)
+
+from typing import Any
+
 from backend.routes import auth
 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
@@ -104,7 +117,7 @@ def get_db():
 
 class GenerateRequest(BaseModel):
     prompt: str
-
+    business_type: str = "general"
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
@@ -249,161 +262,138 @@ def generate_website(
 
         try:
 
-            client = OpenAI(
-                api_key=OPENAI_API_KEY
-            )
+           profile = generate_business_profile(
+               prompt=request.prompt,
+               business_type=request.business_type,
+               user_id=user_id,
+           )
 
-            response = client.chat.completions.create(
-                model=GPT_MODEL_NAME,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are a professional web designer. "
-                            "Output ONLY clean HTML with inline CSS."
-                        ),
-                    },
-                    {
-                        "role": "user",
-                        "content": (
-                            f"Create a modern website for: {request.prompt}"
-                        ),
-                    },
-                ],
-            )
+           content_html = generate_landing_page_content(
+               profile=profile,
+           )
 
-            usage = response.usage
+           generated_html = render_selected_template(
+               template_name=profile.get(
+                   "template_name",
+                   "modern",
+               ),
+               title=profile.get(
+                   "business_name",
+                   "Website",
+               ),
+               tagline=profile.get(
+                   "tagline",
+                   "",
+               ),
+               hero_title=profile.get(
+                   "hero_title",
+                   "",
+               ),
+               hero_subtitle=profile.get(
+                   "hero_subtitle",
+                   "",
+               ),
+               seo_title=profile.get(
+                   "seo_title",
+                   profile.get(
+                       "business_name",
+                       "Website",
+                   ),
+               ),
+               seo_description=profile.get(
+                   "seo_description",
+                   "",
+               ),
+               content_html=content_html,
+               theme=profile.get(
+                   "theme",
+                   "modern",
+               ),
+               branding=profile.get(
+                   "branding",
+                   {},
+               ),
+           )
 
-            print("GPT USAGE:", usage)
+           usage = profile.get("_usage", {})
 
-            prompt_tokens = 0
-            completion_tokens = 0
-            total_tokens = 0
+           prompt_tokens = usage.get("prompt_tokens", 0)
+           completion_tokens = usage.get("completion_tokens", 0)
+           total_tokens = usage.get("total_tokens", 0)
 
-            if usage:
+           record_gpt_tokens(
+               model=GPT_MODEL_NAME,
+               user_id=user_id,
+               prompt_tokens=prompt_tokens,
+               completion_tokens=completion_tokens,
+               total_tokens=total_tokens,
+           )
 
-                prompt_tokens = getattr(
-                    usage,
-                    "prompt_tokens",
-                    0,
-                )
+           cost_usd = calculate_gpt_cost(
+               model=GPT_MODEL_NAME,
+               prompt_tokens=prompt_tokens,
+               completion_tokens=completion_tokens,
+           )
 
-                completion_tokens = getattr(
-                    usage,
-                    "completion_tokens",
-                    0,
-                )
+           record_gpt_cost(
+               model=GPT_MODEL_NAME,
+               user_id=user_id,
+               cost_usd=cost_usd,
+           )
 
-                total_tokens = getattr(
-                    usage,
-                    "total_tokens",
-                    0,
-                )
+           usage_service = UsageService(db)
 
-            print(
-                prompt_tokens,
-                completion_tokens,
-                total_tokens,
-            )
+           usage_service.record_gpt_usage(
+               user=user,
+               tokens_used=total_tokens,
+               estimated_cost_usd=cost_usd,
+           )
 
-            # ---------------------------------------------------
-            # PROMETHEUS TOKEN METRICS
-            # ---------------------------------------------------
+           metadata = dict(profile)
+           metadata.pop("_usage", None)
+           metadata.pop("_model", None)
 
-            record_gpt_tokens(
-                model=GPT_MODEL_NAME,
-                user_id=user_id,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                total_tokens=total_tokens,
-            )
+           new_site = WebsiteRecord(
+               user_id=user_uuid,
+               project_name=profile.get("business_name"),
+               business_type=request.business_type,
+               prompt=request.prompt,
+               html=generated_html,
+               css="",
+               js="",
+               metadata_json=metadata,
+               gpt_model=GPT_MODEL_NAME,
+               gpt_tokens_prompt=prompt_tokens,
+               gpt_tokens_completion=completion_tokens,
+               gpt_tokens_total=total_tokens,
+               gpt_cost_usd=cost_usd,
+               generation_status="completed",
+           )
 
-            # ---------------------------------------------------
-            # GPT COST CALCULATION
-            # ---------------------------------------------------
+           db.add(user)
+           db.add(new_site)
 
-            cost_usd = calculate_gpt_cost(
-                model=GPT_MODEL_NAME,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-            )
+           db.commit()
+           db.refresh(new_site)
 
-            record_gpt_cost(
-                model=GPT_MODEL_NAME,
-                user_id=user_id,
-                cost_usd=cost_usd,
-            )
+           metric_context["status"] = "success"
 
-            # ---------------------------------------------------
-            # PERSIST USAGE TO DATABASE
-            # ---------------------------------------------------
-
-            usage_service = UsageService(db)
-
-            usage_service.record_gpt_usage(
-                user=user,
-                tokens_used=total_tokens,
-                estimated_cost_usd=cost_usd,
-            )
-
-            # ---------------------------------------------------
-            # GENERATED HTML
-            # ---------------------------------------------------
-
-            generated_html = (
-                response.choices[0]
-                .message
-                .content
-                or ""
-            )
-
-            if generated_html.startswith("```"):
-
-                generated_html = (
-                    generated_html
-                    .replace("```html", "")
-                    .replace("```", "")
-                )
-
-            # ---------------------------------------------------
-            # SAVE GENERATED SITE
-            # ---------------------------------------------------
-
-            new_site = WebsiteRecord(
-                user_id=user_uuid,
-                prompt=request.prompt,
-                html=generated_html,
-                gpt_model=GPT_MODEL_NAME,
-                gpt_tokens_prompt=prompt_tokens,
-                gpt_tokens_completion=completion_tokens,
-                gpt_tokens_total=total_tokens,
-                gpt_cost_usd=cost_usd,
-                generation_status="completed",
-            )
-
-            db.add(user)
-
-            db.add(new_site)
-
-            db.commit()
-
-            db.refresh(new_site)
-
-            metric_context["status"] = "success"
-
-            return {
-                "id": str(new_site.id),
-                "html": generated_html,
-                "tokens_used": total_tokens,
-                "cost_usd": round(cost_usd, 8),
-                "user_id": user_id,
-                "subscription_tier": user.subscription_tier,
-                "monthly_tokens_used": user.monthly_tokens_used,
-                "monthly_spend_used_usd": round(
-                    user.monthly_spend_used_usd,
-                    6,
-                ),
-            }
+           return {
+               "id": str(new_site.id),
+               "project_name": new_site.project_name,
+               "business_type": new_site.business_type,
+               "html": generated_html,
+               "metadata": metadata,
+               "tokens_used": total_tokens,
+               "cost_usd": round(cost_usd, 8),
+               "user_id": user_id,
+               "subscription_tier": user.subscription_tier,
+               "monthly_tokens_used": user.monthly_tokens_used,
+               "monthly_spend_used_usd": round(
+                   user.monthly_spend_used_usd,
+                   6,
+               ),
+           }
 
         except Exception as exc:
 
@@ -418,7 +408,7 @@ def generate_website(
                 detail=str(exc),
             )
 
-    
+
 
 if __name__ == "__main__":
     import uvicorn
