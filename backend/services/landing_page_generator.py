@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend.services.layouts.registry import (
+    render_selected_layout,
+)
 
 DEFAULT_SECTION_ORDER = [
     "services",
@@ -373,5 +376,18 @@ def generate_landing_page_content(
             renderer(profile)
         )
 
-    return "\n".join(sections)
+    content_html = "\n".join(
+        sections
+    )
+
+    return render_selected_layout(
+        layout_type=profile.get(
+            "layout_type",
+            "general",
+        ),
+        profile=profile,
+        content_html=content_html,
+    )
+
+
 

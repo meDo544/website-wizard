@@ -175,6 +175,62 @@ section {{
     margin-top: 60px;
 }}
 
+/* ---------------------------------------------------
+   AUTHORITY LAYOUT
+--------------------------------------------------- */
+
+.layout-authority {{
+    display: block;
+}}
+
+.authority-introduction {{
+    display: grid;
+    grid-template-columns: repeat(
+        3,
+        minmax(0, 1fr)
+    );
+    gap: 24px;
+    margin: 10px 0 70px;
+}}
+
+.authority-proof,
+.authority-value,
+.authority-trust {{
+    margin-top: 0;
+    padding: 28px;
+    background: {secondary_color};
+    border: 1px solid #d1d5db;
+    border-top: 4px solid {primary_color};
+}}
+
+.authority-proof h2,
+.authority-value h2,
+.authority-trust h2 {{
+    margin-top: 0;
+    margin-bottom: 14px;
+    font-size: 1.25rem;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}}
+
+.authority-proof p,
+.authority-value p,
+.authority-trust p {{
+    margin: 0;
+    line-height: 1.7;
+}}
+
+.authority-content {{
+    border-top: 1px solid #d1d5db;
+    padding-top: 10px;
+}}
+
+@media (max-width: 800px) {{
+    .authority-introduction {{
+        grid-template-columns: 1fr;
+    }}
+}}
+
 .cta {{
     background: transparent;
     color: {theme_config["text_color"]};
