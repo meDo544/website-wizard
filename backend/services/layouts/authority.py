@@ -3,7 +3,10 @@ from __future__ import annotations
 import html
 from typing import Any
 
-from backend.services.sections import Section
+from backend.services.sections import (
+    ConversionRole,
+    Section,
+)
 
 def _get_selected_headline(
     profile: dict[str, Any],
@@ -102,35 +105,39 @@ def render_layout(
         authority_blocks
     )
 
-    preferred_order = [
-        "testimonials",
-        "services",
-        "features",
-        "faqs",
-        "contact",
-        "cta",
+    preferred_roles = [
+        ConversionRole.TRUST,
+        ConversionRole.OFFER,
+        ConversionRole.EDUCATION,
+        ConversionRole.OBJECTION,
+        ConversionRole.CONTACT,
+        ConversionRole.ACTION,
     ]
 
     ordered_sections: list[str] = []
+    used_sections: set[str] = set()
 
-    for section_name in preferred_order:
+    for conversion_role in preferred_roles:
 
-        section = sections.get(
-            section_name
-        )
+        for section_name, section in sections.items():
 
-        if (
-            section
-            and section.visible
-        ):
-            ordered_sections.append(
-                section.html
-            )
+            if (
+                section.visible
+                and section.conversion_role
+                == conversion_role
+            ):
+                ordered_sections.append(
+                    section.html
+                )
+
+                used_sections.add(
+                    section_name
+                )
 
     for section_name, section in sections.items():
 
         if (
-            section_name not in preferred_order
+            section_name not in used_sections
             and section.visible
         ):
             ordered_sections.append(

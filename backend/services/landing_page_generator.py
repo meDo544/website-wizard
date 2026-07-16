@@ -8,7 +8,10 @@ from backend.services.layouts.registry import (
     render_selected_layout,
 )
 
-from backend.services.sections import Section
+from backend.services.sections import (
+    ConversionRole,
+    Section,
+)
 
 DEFAULT_SECTION_ORDER = [
     "services",
@@ -352,6 +355,32 @@ SECTION_RENDERERS = {
     "cta": render_cta_section,
 }
 
+SECTION_CONVERSION_ROLES = {
+
+    "hero":
+        ConversionRole.HERO,
+
+    "services":
+        ConversionRole.OFFER,
+
+    "products":
+        ConversionRole.OFFER,
+
+    "features":
+        ConversionRole.EDUCATION,
+
+    "testimonials":
+        ConversionRole.TRUST,
+
+    "faqs":
+        ConversionRole.OBJECTION,
+
+    "contact":
+        ConversionRole.CONTACT,
+
+    "cta":
+        ConversionRole.ACTION,
+}
 
 def generate_landing_page_content(
     *,
@@ -386,6 +415,11 @@ def generate_landing_page_content(
             visible=bool(
                 section_html.strip()
             ),
+            conversion_role=
+                SECTION_CONVERSION_ROLES.get(
+                    section_name,
+                    ConversionRole.OTHER,
+                ),
         )
 
     return render_selected_layout(
