@@ -31,6 +31,7 @@ from backend.services.layouts.general import (
     render_layout as render_general_layout,
 )
 
+from backend.services.sections import Section
 
 LayoutRenderer = Callable[..., str]
 
@@ -82,7 +83,7 @@ def render_selected_layout(
     *,
     layout_type: str | None,
     profile: dict[str, Any],
-    sections: dict[str, str],
+    sections: dict[str, Section],
 ) -> str:
 
     renderer = get_layout_renderer(

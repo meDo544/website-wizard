@@ -8,6 +8,8 @@ from backend.services.layouts.registry import (
     render_selected_layout,
 )
 
+from backend.services.sections import Section
+
 DEFAULT_SECTION_ORDER = [
     "services",
     "features",
@@ -359,7 +361,7 @@ def generate_landing_page_content(
     Generate ordered landing-page section HTML from a GPT profile.
     """
 
-    sections: dict[str, str] = {}
+    sections: dict[str, Section] = {}
 
     for section_name in get_section_order(
         profile
@@ -372,10 +374,18 @@ def generate_landing_page_content(
         if not renderer:
             continue
 
+        section_html = renderer(
+            profile
+        )
+
         sections[
             section_name
-        ] = renderer(
-            profile
+        ] = Section(
+            name=section_name,
+            html=section_html,
+            visible=bool(
+                section_html.strip()
+            ),
         )
 
     return render_selected_layout(

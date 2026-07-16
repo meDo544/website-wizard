@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 from typing import Any
 
+from backend.services.sections import Section
 
 def _get_selected_headline(
     profile: dict[str, Any],
@@ -31,7 +32,7 @@ def _get_selected_headline(
 def render_layout(
     *,
     profile: dict[str, Any],
-    sections: dict[str, str],
+    sections: dict[str, Section],
 ) -> str:
     """
     Render an authority-focused content layout.
@@ -114,24 +115,26 @@ def render_layout(
 
     for section_name in preferred_order:
 
-        section_html = sections.get(
-            section_name,
-            "",
+        section = sections.get(
+            section_name
         )
 
-        if section_html:
+        if (
+            section
+            and section.visible
+        ):
             ordered_sections.append(
-                section_html
+                section.html
             )
 
-    for section_name, section_html in sections.items():
+    for section_name, section in sections.items():
 
         if (
             section_name not in preferred_order
-            and section_html
+            and section.visible
         ):
             ordered_sections.append(
-                section_html
+                section.html
             )
 
     content_html = "\n".join(
