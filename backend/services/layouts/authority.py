@@ -31,7 +31,7 @@ def _get_selected_headline(
 def render_layout(
     *,
     profile: dict[str, Any],
-    content_html: str,
+    sections: dict[str, str],
 ) -> str:
     """
     Render an authority-focused content layout.
@@ -99,6 +99,43 @@ def render_layout(
 
     authority_html = "\n".join(
         authority_blocks
+    )
+
+    preferred_order = [
+        "testimonials",
+        "services",
+        "features",
+        "faqs",
+        "contact",
+        "cta",
+    ]
+
+    ordered_sections: list[str] = []
+
+    for section_name in preferred_order:
+
+        section_html = sections.get(
+            section_name,
+            "",
+        )
+
+        if section_html:
+            ordered_sections.append(
+                section_html
+            )
+
+    for section_name, section_html in sections.items():
+
+        if (
+            section_name not in preferred_order
+            and section_html
+        ):
+            ordered_sections.append(
+                section_html
+            )
+
+    content_html = "\n".join(
+        ordered_sections
     )
 
     return f"""

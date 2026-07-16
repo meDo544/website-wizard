@@ -359,7 +359,7 @@ def generate_landing_page_content(
     Generate ordered landing-page section HTML from a GPT profile.
     """
 
-    sections: list[str] = []
+    sections: dict[str, str] = {}
 
     for section_name in get_section_order(
         profile
@@ -372,13 +372,11 @@ def generate_landing_page_content(
         if not renderer:
             continue
 
-        sections.append(
-            renderer(profile)
+        sections[
+            section_name
+        ] = renderer(
+            profile
         )
-
-    content_html = "\n".join(
-        sections
-    )
 
     return render_selected_layout(
         layout_type=profile.get(
@@ -386,7 +384,7 @@ def generate_landing_page_content(
             "general",
         ),
         profile=profile,
-        content_html=content_html,
+        sections=sections,
     )
 
 

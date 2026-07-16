@@ -6,7 +6,7 @@ from typing import Any
 def render_layout(
     *,
     profile: dict[str, Any],
-    content_html: str,
+    sections: dict[str, str],
 ) -> str:
     """
     Render a trust-focused layout.
@@ -15,4 +15,6 @@ def render_layout(
     pass-through to preserve existing behavior.
     """
 
-    return content_html
+    return "\n".join(
+        sections.values()
+    )

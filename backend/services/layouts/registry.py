@@ -82,7 +82,7 @@ def render_selected_layout(
     *,
     layout_type: str | None,
     profile: dict[str, Any],
-    content_html: str,
+    sections: dict[str, str],
 ) -> str:
 
     renderer = get_layout_renderer(
@@ -91,5 +91,7 @@ def render_selected_layout(
 
     return renderer(
         profile=profile,
-        content_html=content_html,
+        sections=sections,
     )
+
+
