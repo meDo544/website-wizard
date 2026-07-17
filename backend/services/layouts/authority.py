@@ -114,8 +114,15 @@ def render_layout(
         ConversionRole.ACTION,
     ]
 
-    ordered_sections: list[str] = []
-    used_sections: set[str] = set()
+    ordered_sections = order_sections(
+        sections=sections,
+        preferred_roles=preferred_roles,
+    )
+
+    content_html = "\n".join(
+        section.html
+        for section in ordered_sections
+    )
 
     for conversion_role in preferred_roles:
 
