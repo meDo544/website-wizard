@@ -5,15 +5,6 @@ from backend.services.sections import (
     Section,
 )
 
-from backend.services.layouts.orchestrator import (
-    order_sections,
-)
-
-from backend.services.sections import (
-    ConversionRole,
-    Section,
-)
-
 def order_sections(
     *,
     sections: dict[str, Section],

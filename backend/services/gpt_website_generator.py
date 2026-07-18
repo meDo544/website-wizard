@@ -15,6 +15,10 @@ from backend.core.metrics import (
     track_gpt_duration,
 )
 
+from backend.services.business_goal_selector import (
+    infer_primary_goal,
+)
+
 logger = structlog.get_logger(__name__)
 
 client = OpenAI(
@@ -5198,13 +5202,6 @@ def enforce_cta_priority_rules(
         profile.get("cta", "")
     ).lower()
 
-    print("\n=== CTA DEBUG ===")
-    print("business_type:", business_type)
-    print("website_identity.primary_cta:", website_identity.get("primary_cta"))
-    print("profile.cta:", profile.get("cta"))
-    print("selected_cta:", profile.get("selected_cta"))
-    print("=================\n")
-
     ecommerce_keywords = (
         "ecommerce",
         "shop",
@@ -7930,12 +7927,9 @@ Use this exact JSON structure:
                 )
             )
 
-            print(
-                "\n=== LAYOUT DEBUG ===\n"
-                f"industry={profile.get('industry')!r}\n"
-                f"layout_type={profile.get('layout_type')!r}\n"
-                "===================="
-            )
+            goal = infer_primary_goal(profile)
+
+            profile["primary_goal"] = goal
 
             _normalize_section_order(
                 profile
@@ -9188,16 +9182,6 @@ Use this exact JSON structure:
 
             profile["_usage"] = usage
             profile["_model"] = model
-
-            print("\n=== INDUSTRY DEBUG ===")
-            print("business_type:", profile["website_identity"]["business_type"])
-            print("industry:", profile.get("industry"))
-            print("======================\n")
-
-            print("\n=== TEMPLATE DEBUG ===")
-            print("industry =", profile.get("industry"))
-            print("template_name =", profile.get("template_name"))
-            print("======================\n")
 
             return profile
 

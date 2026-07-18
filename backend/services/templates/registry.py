@@ -72,18 +72,6 @@ def render_selected_template(
         template_name
     )
 
-    print(
-        "\n=== TEMPLATE RENDER DEBUG ===\n"
-        f"template_name={template_name!r}\n"
-        f"renderer={renderer.__module__}.{renderer.__name__}\n"
-        "============================="
-    )
-
-    print("\n=== TEMPLATE RENDER DEBUG ===")
-    print(f"template_name={template_name!r}")
-    print(f"renderer={renderer.__module__}.{renderer.__name__}")
-    print("=============================\n")
-
     return renderer(
         title=title,
         tagline=tagline,

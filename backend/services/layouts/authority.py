@@ -8,6 +8,10 @@ from backend.services.sections import (
     Section,
 )
 
+from backend.services.layouts.orchestrator import (
+    order_sections,
+)
+
 def _get_selected_headline(
     profile: dict[str, Any],
     field_name: str,
@@ -122,37 +126,6 @@ def render_layout(
     content_html = "\n".join(
         section.html
         for section in ordered_sections
-    )
-
-    for conversion_role in preferred_roles:
-
-        for section_name, section in sections.items():
-
-            if (
-                section.visible
-                and section.conversion_role
-                == conversion_role
-            ):
-                ordered_sections.append(
-                    section.html
-                )
-
-                used_sections.add(
-                    section_name
-                )
-
-    for section_name, section in sections.items():
-
-        if (
-            section_name not in used_sections
-            and section.visible
-        ):
-            ordered_sections.append(
-                section.html
-            )
-
-    content_html = "\n".join(
-        ordered_sections
     )
 
     return f"""
