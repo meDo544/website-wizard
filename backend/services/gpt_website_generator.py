@@ -19,6 +19,10 @@ from backend.services.business_classifier import (
     classify_business_profile,
 )
 
+from backend.services.business_profile_validator import (
+    validate_business_profile,
+)
+
 logger = structlog.get_logger(__name__)
 
 client = OpenAI(
@@ -7688,6 +7692,8 @@ Use this exact JSON structure:
             profile["branding"] = branding
 
             profile = classify_business_profile(profile)
+
+            validate_business_profile(profile)
 
             _normalize_section_order(profile)
 
