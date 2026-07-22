@@ -23,6 +23,8 @@ from backend.services.business_profile_validator import (
     validate_business_profile,
 )
 
+from backend.domain.website_state import WebsiteState
+
 logger = structlog.get_logger(__name__)
 
 client = OpenAI(
@@ -7694,6 +7696,10 @@ Use this exact JSON structure:
             profile = classify_business_profile(profile)
 
             validate_business_profile(profile)
+
+            state = WebsiteState.from_profile(profile)
+
+            profile = state.to_profile()
 
             _normalize_section_order(profile)
 
