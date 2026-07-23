@@ -4825,10 +4825,10 @@ def _apply_selected_hero(
         )
 
     if selected_variant:
-        profile["hero_title"] = selected_variant["title"]
-        profile["hero_subtitle"] = selected_variant["subtitle"]
-        profile["selected_hero_type"] = selected_type
-        profile["selected_hero"] = {
+        state.hero.hero_title = selected_variant["title"]
+        state.hero.hero_subtitle = selected_variant["subtitle"]
+        state.hero.selected_hero_type = selected_type
+        state.hero.selected_hero = {
             "type": selected_type,
             "headline": selected_variant["title"],
             "subheadline": selected_variant["subtitle"],
@@ -4895,13 +4895,13 @@ def enforce_hero_priority_rules(
 
         hero["type"] = "benefit"
 
-        profile["selected_hero_type"] = "benefit"
+        state.hero.selected_hero_type = "benefit"
 
         profile["conversion_strategy"] = "purchase"
 
-        profile["hero_title"] = hero_title
+        state.hero.hero_title = hero_title
 
-        profile["hero_subtitle"] = hero_subtitle
+        state.hero.hero_subtitle = hero_subtitle
 
     # ---------------------------------------------
     # Consultant
@@ -4916,7 +4916,7 @@ def enforce_hero_priority_rules(
 
         hero["type"] = "authority"
 
-        profile["selected_hero_type"] = "authority"
+        state.hero.selected_hero_type = "authority"
 
         profile["conversion_strategy"] = "consultation"
 
@@ -4933,11 +4933,13 @@ def enforce_hero_priority_rules(
 
         hero["type"] = "luxury"
 
-        profile["selected_hero_type"] = "luxury"
+        state.hero.selected_hero_type = "authority"
 
         profile["conversion_strategy"] = "booking"
 
-    profile["selected_hero"] = hero
+        state.hero.selected_hero = hero
+
+        profile = state.to_profile()
 
 def _apply_selected_cta(
     profile: dict[str, Any],
