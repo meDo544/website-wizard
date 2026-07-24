@@ -4939,12 +4939,17 @@ def enforce_hero_priority_rules(
 
         state.hero.selected_hero = hero
 
+        _apply_selected_cta(
+            profile,
+            state,
+        )
+
         profile = state.to_profile()
 
 def _apply_selected_cta(
     profile: dict[str, Any],
+    state: WebsiteState,
 ) -> None:
-
     selected_cta = select_cta_variant(
         cta_variants=profile.get(
             "cta_variants",
@@ -4956,9 +4961,9 @@ def _apply_selected_cta(
         ),
     )
 
-    profile["selected_cta_type"] = selected_cta["type"]
-    profile["selected_cta"] = selected_cta
-    profile["cta"] = selected_cta["text"]
+    state.cta.selected_cta_type = selected_cta["type"]
+    state.cta.selected_cta = selected_cta
+    state.cta.cta = selected_cta["text"]
 
 def enforce_cta_priority_rules(
     profile: dict[str, Any],
@@ -5018,7 +5023,7 @@ def enforce_cta_priority_rules(
             website_identity["secondary_cta"] = "Browse Products"
             website_identity["cta_strategy"] = "purchase"
 
-            profile["cta"] = "Shop Now"
+            state.cta.cta = "Shop Now"
 
             selected_cta = profile.get(
                 "selected_cta",
@@ -5029,8 +5034,8 @@ def enforce_cta_priority_rules(
                 selected_cta,
                 dict,
             ):
-                selected_cta["text"] = "Shop Now"
-                selected_cta["type"] = "purchase"
+                state.cta.selected_cta["text"] = "Shop Now"
+                state.cta.selected_cta["type"] = "purchase"
 
     profile["website_identity"] = website_identity
 

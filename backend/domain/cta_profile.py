@@ -1,10 +1,10 @@
 from dataclasses import dataclass, asdict
 from typing import Any
 
+
 @dataclass
 class CTAProfile:
-    cta_title: str = ""
-    cta_subtitle: str = ""
+    cta: str = ""
     selected_cta_type: str = ""
     selected_cta: dict[str, Any] | None = None
 
