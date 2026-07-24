@@ -5041,6 +5041,7 @@ def enforce_cta_priority_rules(
 
 def _apply_selected_offer(
     profile: dict[str, Any],
+    state: WebsiteState,
 ) -> None:
 
     selected_offer = select_offer_variant(
@@ -5054,13 +5055,8 @@ def _apply_selected_offer(
         ),
     )
 
-    profile["selected_offer_type"] = (
-        selected_offer["type"]
-    )
-
-    profile["selected_offer"] = (
-        selected_offer
-    )
+    state.offer.selected_offer_type = selected_offer["type"]
+    state.offer.selected_offer = selected_offer
 
 def enforce_offer_priority_rules(
     profile: dict[str, Any],
@@ -5097,55 +5093,48 @@ def enforce_offer_priority_rules(
     )
 
     # ---------------------------------------------
-    # Ecommerce
-    # ---------------------------------------------
+# Ecommerce
+# ---------------------------------------------
 
-    if _business_matches(
-        business_type,
-        "ecommerce",
-        "shop",
-        "store",
-        "marketplace",
-        "retail",
-    ):
+if _business_matches(
+    business_type,
+    "ecommerce",
+    "shop",
+    "store",
+    "marketplace",
+    "retail",
+):
+    offer["type"] = "discount"
+    state.offer.selected_offer_type = "discount"
 
-        offer["type"] = "discount"
+# ---------------------------------------------
+# Consultant
+# ---------------------------------------------
 
-        profile["selected_offer_type"] = "discount"
+elif _business_matches(
+    business_type,
+    "consult",
+    "coach",
+    "advisor",
+):
+    offer["type"] = "consultation"
+    state.offer.selected_offer_type = "consultation"
 
-    # ---------------------------------------------
-    # Consultant
-    # ---------------------------------------------
+# ---------------------------------------------
+# Restaurant
+# ---------------------------------------------
 
-    elif _business_matches(
-        business_type,
-        "consult",
-        "coach",
-        "advisor",
-    ):
+elif _business_matches(
+    business_type,
+    "restaurant",
+    "cafe",
+    "food",
+):
+    offer["type"] = "discount"
+    state.offer.selected_offer_type = "discount"
 
-        offer["type"] = "consultation"
-
-        profile["selected_offer_type"] = "consultation"
-
-    # ---------------------------------------------
-    # Restaurant
-    # ---------------------------------------------
-
-    elif _business_matches(
-        business_type,
-        "restaurant",
-        "cafe",
-        "food",
-    ):
-
-        offer["type"] = "bonus"
-
-        profile["selected_offer_type"] = "bonus"
-
-    offer["headline"] = headline
-
-    profile["selected_offer"] = offer
+offer["headline"] = headline
+state.offer.selected_offer = offer
 
 def _apply_selected_trust(
     profile: dict[str, Any],
@@ -7803,12 +7792,16 @@ Use this exact JSON structure:
             )
 
             _apply_selected_offer(
-                profile
+                profile,
+                state,
             )
 
             enforce_offer_priority_rules(
-                profile
+                profile,
+                state,
             )
+
+            profile = state.to_profile()
 
             _apply_selected_trust(
                 profile
