@@ -23,6 +23,22 @@ from backend.services.business_profile_validator import (
     validate_business_profile,
 )
 
+from backend.services.hero_service import (
+    apply_hero,
+)
+
+from backend.services.cta_service import (
+    apply_cta,
+)
+
+from backend.services.offer_service import (
+    apply_offer,
+)
+
+from backend.services.trust_service import (
+    apply_trust,
+)
+
 from backend.domain.website_state import WebsiteState
 
 logger = structlog.get_logger(__name__)
@@ -4782,6 +4798,7 @@ def select_industry_conversion_variant(
 
 def _apply_selected_hero(
     profile: dict[str, Any],
+    state: WebsiteState,
 ) -> None:
     conversion_strategy = str(
         profile.get(
@@ -4841,6 +4858,7 @@ def _apply_selected_hero(
 
 def enforce_hero_priority_rules(
     profile: dict[str, Any],
+    state: WebsiteState,
 ) -> None:
 
     website_identity = profile.get(
@@ -4938,13 +4956,6 @@ def enforce_hero_priority_rules(
         profile["conversion_strategy"] = "booking"
 
         state.hero.selected_hero = hero
-
-        _apply_selected_cta(
-            profile,
-            state,
-        )
-
-        profile = state.to_profile()
 
 def _apply_selected_cta(
     profile: dict[str, Any],
@@ -7776,40 +7787,28 @@ Use this exact JSON structure:
                 profile
             )
 
-            _apply_selected_hero(
-                profile
-            )
-
-            enforce_hero_priority_rules(
-                profile
-            )
-
-            _apply_selected_cta(
-                profile
-            )
-
-            enforce_cta_priority_rules(
-                profile
-            )
-
-            _apply_selected_offer(
-                profile,
-                state,
-            )
-
-            enforce_offer_priority_rules(
+            apply_hero(
                 profile,
                 state,
             )
 
             profile = state.to_profile()
 
-            _apply_selected_trust(
+            apply_cta(
                 profile,
                 state,
             )
 
-            enforce_trust_priority_rules(
+            profile = state.to_profile()
+
+            apply_offer(
+                profile,
+                state,
+            )
+
+            profile = state.to_profile()
+
+            apply_trust(
                 profile,
                 state,
             )
