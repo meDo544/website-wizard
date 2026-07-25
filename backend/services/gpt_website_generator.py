@@ -5138,6 +5138,7 @@ state.offer.selected_offer = offer
 
 def _apply_selected_trust(
     profile: dict[str, Any],
+    state: WebsiteState, 
 ) -> None:
 
     selected_trust = select_trust_variant(
@@ -5151,11 +5152,11 @@ def _apply_selected_trust(
         ),
     )
 
-    profile["selected_trust_type"] = (
+    state.trust.selected_trust_type = (
         selected_trust["type"]
     )
 
-    profile["selected_trust"] = (
+    state.trust.selected_trust = (
         selected_trust
     )
 
@@ -5204,7 +5205,7 @@ def enforce_trust_priority_rules(
         )
     ):
         trust["type"] = "reviews"
-        profile["selected_trust_type"] = "reviews"
+        state.trust.selected_trust_type = "reviews"
 
     elif any(
         keyword in business_type
@@ -5215,7 +5216,7 @@ def enforce_trust_priority_rules(
         )
     ):
         trust["type"] = "experience"
-        profile["selected_trust_type"] = "experience"
+        state.trust.selected_trust_type = "experience"
 
     elif any(
         keyword in business_type
@@ -5228,7 +5229,7 @@ def enforce_trust_priority_rules(
         )
     ):
         trust["type"] = "certification"
-        profile["selected_trust_type"] = "certification"
+        state.trust.selected_trust_type = "certification"
 
     elif any(
         keyword in business_type
@@ -5241,10 +5242,10 @@ def enforce_trust_priority_rules(
         )
     ):
         trust["type"] = "guarantee"
-        profile["selected_trust_type"] = "guarantee"
+        state.trust.selected_trust_type = "guarantee"
 
     trust["headline"] = headline
-    profile["selected_trust"] = trust
+    state.trust.selected_trust_type = trust
 
 def _apply_selected_social_proof(
     profile: dict[str, Any],
@@ -7804,12 +7805,16 @@ Use this exact JSON structure:
             profile = state.to_profile()
 
             _apply_selected_trust(
-                profile
+                profile,
+                state,
             )
 
             enforce_trust_priority_rules(
-                profile
+                profile,
+                state,
             )
+
+            profile = state.to_profile()
 
             _apply_selected_social_proof(
                 profile
