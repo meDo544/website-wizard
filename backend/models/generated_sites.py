@@ -143,6 +143,18 @@ class GeneratedSite(Base):
         index=True,
     )
 
+    generation_started_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+
+    generation_attempt_id = Column(
+        UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+    )
+
     error_message = Column(
         Text,
         nullable=True,

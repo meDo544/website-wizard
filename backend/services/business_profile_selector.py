@@ -137,15 +137,10 @@ def infer_industry(
         )
     ).lower()
 
-    if _business_matches(
+    print(
+        "DEBUG infer_industry:",
         business_type,
-        "ecommerce",
-        "shop",
-        "store",
-        "retail",
-        "marketplace",
-    ):
-        return "ecommerce"
+    )
 
     if _business_matches(
         business_type,
@@ -155,7 +150,19 @@ def infer_industry(
         "pizza",
         "bakery",
     ):
+        print("Matched restaurant")
         return "restaurant"
+
+    if _business_matches(
+        business_type,
+        "ecommerce",
+        "shop",
+        "store",
+        "retail",
+        "marketplace",
+    ):
+        print("Matched ecommerce")
+        return "ecommerce"
 
     if _business_matches(
         business_type,
@@ -166,6 +173,7 @@ def infer_industry(
         "dentist",
         "health",
     ):
+        print("Matched medical")
         return "medical"
 
     if _business_matches(
@@ -175,6 +183,7 @@ def infer_industry(
         "legal",
         "attorney",
     ):
+        print("Matched legal")
         return "legal"
 
     if _business_matches(
@@ -186,6 +195,7 @@ def infer_industry(
         "plumber",
         "plumbing",
     ):
+        print("Matched contractor")
         return "contractor"
 
     if _business_matches(
@@ -194,6 +204,7 @@ def infer_industry(
         "coach",
         "advisor",
     ):
+        print("Matched consultant")
         return "consultant"
 
     if _business_matches(
@@ -202,6 +213,7 @@ def infer_industry(
         "marketing",
         "creative",
     ):
+        print("Matched agency")
         return "agency"
 
     if _business_matches(
@@ -211,6 +223,7 @@ def infer_industry(
         "platform",
         "application",
     ):
+        print("Matched saas")
         return "saas"
 
     if _business_matches(
@@ -219,6 +232,7 @@ def infer_industry(
         "foundation",
         "nonprofit",
     ):
+        print("Matched nonprofit")
         return "nonprofit"
 
     return "general"

@@ -11,8 +11,7 @@ class CTAProfile:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "CTAProfile":
         return cls(
-            cta_title=data.get("cta_title", ""),
-            cta_subtitle=data.get("cta_subtitle", ""),
+            cta=data.get("cta", ""),
             selected_cta_type=data.get("selected_cta_type", ""),
             selected_cta=data.get("selected_cta"),
         )

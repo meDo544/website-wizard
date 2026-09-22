@@ -177,7 +177,7 @@ def render_shipping_section(
     profile: dict[str, Any],
 ) -> str:
 
-    from backend.services.gpt_website_generator import (
+    from backend.services.industry_component_selector import (
         component_is_active,
     )
 
@@ -209,7 +209,7 @@ def render_payments_section(
     profile: dict[str, Any],
 ) -> str:
 
-    from backend.services.gpt_website_generator import (
+    from backend.services.industry_component_selector import (
         component_is_active,
     )
 
@@ -241,7 +241,7 @@ def render_returns_section(
     profile: dict[str, Any],
 ) -> str:
 
-    from backend.services.gpt_website_generator import (
+    from backend.services.industry_component_selector import (
         component_is_active,
     )
 

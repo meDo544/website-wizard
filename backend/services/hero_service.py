@@ -236,7 +236,7 @@ def apply_hero(
         state,
     )
 
-    _enforce_hero_priority_rules(
+    enforce_hero_priority_rules(
         profile,
         state,
     )
