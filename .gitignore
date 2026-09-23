@@ -153,3 +153,6 @@ transport:
 # =========================
 ../*
 
+
+# Local Docker credentials
+.env.docker

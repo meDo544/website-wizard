@@ -42,8 +42,6 @@ if config.config_file_name is not None:
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-print("🚨 ALEMBIC DATABASE_URL:", DATABASE_URL)
-
 if not DATABASE_URL:
     raise RuntimeError(
         "❌ DATABASE_URL is not set"
