@@ -1,6 +1,6 @@
 # Website Wizard Recovery Guide
 
-**Version:** v1.0.0
+**Version:** v1.0.4
 
 ---
 
@@ -206,35 +206,154 @@ LIMIT 5;
 
 # Database Recovery
 
-## Backup
+## Automated Local Backup
 
-Create backup:
+Website Wizard creates automated PostgreSQL custom-format backups using `/usr/local/sbin/website-wizard-backup.sh`.
 
-```bash id="5bmrvc"
-docker compose exec postgres pg_dump \
--U ww_admin \
-level6db \
-> backup.sql
-```
+The backup process:
+
+* Uses `pg_dump -Fc --no-owner --no-acl`
+* Validates the archive with `pg_restore`
+* Generates a SHA-256 checksum
+* Stores backups in `/var/backups/website-wizard`
+* Restricts the backup directory and files to root access
+* Applies approximately 14 days of local retention
+
+The systemd backup timer runs daily at approximately **02:00 UTC**.
+
+Production backup units:
+
+* `website-wizard-backup.service`
+* `website-wizard-backup.timer`
+
+Automated backup creation must never automatically trigger restoration into the production database.
 
 ---
 
-## Restore
+## Off-Site Backup Replication
 
-Restore database:
+Verified local backups are replicated to the private Google Cloud Storage bucket:
 
-```bash id="zw6ztm"
-psql level6db < backup.sql
-```
+`gs://project-6d15b393-133a-40fd-aa9-ww-postgres-backups`
 
-After restoration:
+Cloud replication is performed by `/usr/local/sbin/website-wizard-cloud-backup.sh`.
 
-* Verify schema
-* Verify generated projects
-* Verify metadata
-* Generate a new website
+The cloud replication timer runs daily at approximately **02:15 UTC**, after the local backup schedule.
 
-Restore validation is strongly recommended after every backup procedure.
+Production cloud-backup units:
+
+* `website-wizard-cloud-backup.service`
+* `website-wizard-cloud-backup.timer`
+
+The replication process verifies the local SHA-256 checksum before upload and uses create-only semantics so an existing backup object cannot be silently overwritten.
+
+Backup objects are organized under `postgres/YYYY/MM/DD/`.
+
+The GCS lifecycle policy removes live objects at 30 or more days since creation. GCS Soft Delete is enabled for 7 days, so recoverability may extend beyond removal from the live object namespace.
+
+---
+
+## Backup Security Model
+
+Backup creation and disaster recovery use separate service identities.
+
+Backup uploader:
+
+`website-wizard-backup@project-6d15b393-133a-40fd-aa9.iam.gserviceaccount.com`
+
+The backup uploader has create-only object permission on the backup bucket.
+
+Recovery reader:
+
+`website-wizard-recovery@project-6d15b393-133a-40fd-aa9.iam.gserviceaccount.com`
+
+The recovery reader has read-only object access to the backup bucket.
+
+Recovery access uses short-lived service-account impersonation. Long-lived JSON service-account keys must not be created or distributed for this recovery process.
+
+The production VM should not be granted backup-bucket read access merely to simplify recovery. Backup retrieval remains a separate operator-controlled operation.
+
+---
+
+## Restore and Integrity Validation
+
+Every database archive has a companion `.sha256` file.
+
+Before restoration:
+
+1. Confirm the archive and checksum file exist.
+2. Calculate the archive SHA-256 digest.
+3. Confirm it matches the stored digest.
+4. Confirm `pg_restore` can read the custom-format archive.
+
+Example archive check:
+
+`pg_restore --list level6db_YYYYMMDD_HHMMSS.dump >/dev/null`
+
+A backup that fails checksum or archive validation must not be restored.
+
+## Isolated Restore Validation
+
+Restore a backup into an isolated PostgreSQL 16 environment before considering a production restore.
+
+The validation environment must use:
+
+* A separate PostgreSQL container
+* A separate Docker volume
+* A separate database name
+* No production database volume
+* No production host port
+* Test-only credentials
+
+Use `pg_restore` with `--no-owner`, `--no-acl`, and `--exit-on-error`.
+
+After restoration, validate at minimum:
+
+* PostgreSQL connectivity
+* Expected public-table count
+* Alembic migration revision
+* Critical table row counts
+* Metadata availability
+* Archive integrity
+
+## Production Restore Guardrail
+
+Do not restore directly over the running production database as a routine backup test.
+
+A production restore is an operator-controlled disaster-recovery action. Before modifying production data:
+
+1. Confirm that a genuine recovery condition exists.
+2. Identify the exact backup and timestamp.
+3. Verify its SHA-256 checksum.
+4. Successfully restore and validate it in isolation.
+5. Confirm the production database and volume being targeted.
+6. Stop application writers before modifying production data.
+7. Preserve the current production database or volume when technically possible.
+8. Perform the controlled restore.
+9. Validate schema, migration revision, critical data, application health, and website generation before normal traffic resumes.
+
+Never use an automated timer or unattended process to overwrite the production database.
+
+---
+
+## Validated Recovery Evidence
+
+The database disaster-recovery path was successfully exercised on **2026-09-30**.
+
+Validated recovery chain:
+
+`Production PostgreSQL -> automated pg_dump -> custom-format archive + SHA-256 -> create-only GCS replication -> read-only recovery identity -> keyless download -> SHA-256 verification -> isolated PostgreSQL 16 restore -> data validation`
+
+Validated backup:
+
+* Archive: `level6db_20260930_020001.dump`
+* SHA-256: `6e8de61466c18d50ea970081675e86861ff75428ae59b4d74c552566f5ee84ab`
+* Public tables: 15
+* Alembic revision: `add_generation_fence`
+* `generated_sites` rows: 296
+* `users` rows: 2
+
+The cloud-retrieved archive was byte-identical to the verified source backup and restored successfully into an isolated PostgreSQL 16 environment without modifying the production database or production volume.
 
 ---
 
@@ -313,49 +432,122 @@ Flower should show active workers.
 
 # Disaster Recovery
 
-If the entire environment fails:
+If the production environment suffers a major or complete failure, recovery must proceed as a controlled operation.
 
-1. Provision a new server.
-2. Install Docker.
-3. Clone the repository.
-4. Restore the environment configuration.
-5. Restore the PostgreSQL backup.
-6. Start Docker Compose.
-7. Verify all services.
-8. Generate a validation website.
+## Recovery Sequence
+
+1. Confirm the scope of the production failure.
+2. Provision or recover the required compute environment.
+3. Install Docker and required host dependencies.
+4. Clone the Website Wizard repository at the intended recovery revision.
+5. Restore protected environment configuration and required secrets through the approved operational process.
+6. Identify the exact PostgreSQL backup to recover.
+7. Retrieve the archive and companion SHA-256 checksum from the protected backup location.
+8. Verify the SHA-256 digest before using the archive.
+9. Confirm the custom-format archive is readable with `pg_restore`.
+10. Restore the archive into an isolated PostgreSQL 16 environment first.
+11. Validate schema, Alembic revision, critical row counts, and required metadata.
+12. Only after isolated validation, perform an operator-controlled production database restore if required.
+13. Start the Website Wizard Docker Compose services.
+14. Verify PostgreSQL, Redis, backend, Celery, Flower, Prometheus, and Grafana.
+15. Verify the backend health endpoint.
+16. Generate a validation website and confirm expected application behavior before normal traffic resumes.
+
+## Cloud Backup Retrieval
+
+Off-site recovery uses the dedicated read-only recovery identity:
+
+`website-wizard-recovery@project-6d15b393-133a-40fd-aa9.iam.gserviceaccount.com`
+
+Use short-lived service-account impersonation to retrieve the selected archive and checksum from:
+
+`gs://project-6d15b393-133a-40fd-aa9-ww-postgres-backups`
+
+Do not create long-lived JSON service-account keys for disaster recovery.
+
+The recovery identity must remain read-only. Recovery operations must not weaken the create-only permissions of the production backup uploader.
+
+## Production Protection
+
+Disaster-recovery testing must not modify:
+
+* The running production PostgreSQL database
+* The production Docker volume `website-wizard_postgres-data`
+* Production backup objects
+* Production service-account privilege boundaries
+
+Routine restore validation must use isolated containers, volumes, database names, and test credentials.
+
+A production restore requires deliberate operator approval after backup identity, checksum integrity, and isolated restore validation have all been confirmed.
 
 ---
 
 # Validated Recovery Scenarios
 
-The following scenarios were successfully validated during Website Wizard v1.0.0 production hardening:
+The following recovery scenarios have been successfully validated.
 
-| Scenario                        | Result |
-| ------------------------------- | ------ |
-| Backend restart                 | PASS   |
-| Celery restart                  | PASS   |
-| Backend + Celery restart        | PASS   |
-| Regression website generation   | PASS   |
-| Metadata persistence            | PASS   |
-| Autonomous pipeline persistence | PASS   |
+| Scenario | Result |
+| --- | --- |
+| Backend restart | PASS |
+| Celery restart | PASS |
+| Backend + Celery restart | PASS |
+| Regression website generation | PASS |
+| Metadata persistence | PASS |
+| Autonomous pipeline persistence | PASS |
+| Unattended local PostgreSQL backup | PASS |
+| SHA-256 backup integrity verification | PASS |
+| Automated off-site GCS replication | PASS |
+| Local isolated PostgreSQL 16 restore | PASS |
+| Production/restored table-count comparison | PASS |
+| Alembic revision comparison | PASS |
+| Critical row-count comparison | PASS |
+| Keyless recovery-identity impersonation | PASS |
+| Read-only GCS archive and checksum retrieval | PASS |
+| Cloud archive SHA-256 verification | PASS |
+| Cloud-origin isolated PostgreSQL 16 restore | PASS |
+| Recovery-test resource cleanup | PASS |
+| Production health after recovery testing | PASS |
 
-These procedures were executed and confirmed prior to the production release.
+The original service-recovery scenarios were validated during Website Wizard v1.0.0 production hardening.
+
+The backup and disaster-recovery scenarios were validated on **2026-09-30**. The recovery tests used isolated resources and did not modify the production PostgreSQL database or the production volume.
 
 ---
 
 # Recovery Checklist
 
-After any recovery:
+For database or disaster recovery, confirm the recovery source before modifying production:
 
-* Backend running
-* Celery running
+* Exact backup archive and timestamp identified
+* Companion SHA-256 checksum available
+* Archive digest matches the stored checksum
+* Custom-format archive is readable by `pg_restore`
+* Recovery access uses the dedicated read-only recovery identity
+* No long-lived JSON service-account key is required
+* Backup has passed an isolated PostgreSQL 16 restore
+* Expected public-table count verified
+* Alembic migration revision verified
+* Critical row counts verified
+* Production database and target volume explicitly confirmed
+* Production writers stopped before any production database modification
+* Existing production data preserved where technically possible
+
+After recovery, confirm:
+
 * PostgreSQL available
 * Redis available
-* Monitoring available
+* Backend running and healthy
+* Celery running and healthy
+* Flower running and healthy
+* Prometheus available
+* Grafana available
 * Website generation successful
 * Metadata persisted
-* autonomous_core present
-* No unexpected errors
+* `autonomous_core` present where expected
+* No unexpected application or service errors
+* Temporary recovery containers, volumes, and downloaded archives cleaned up when no longer required
+
+A recovery is not complete until both data integrity and application-level validation have succeeded.
 
 ---
 
@@ -377,16 +569,20 @@ These objectives should be reviewed as the platform evolves.
 
 # Future Recovery Enhancements
 
-Potential future improvements:
+The production backup and off-site replication system is operational, and isolated restore validation has been successfully demonstrated.
 
-* Automated backups
-* Automated restore validation
-* Multi-region backups
-* High availability PostgreSQL
+Potential future improvements include:
+
+* Scheduled recurring non-production restore drills
+* Point-in-time recovery (PITR)
+* Multi-region backup replication
+* High-availability PostgreSQL
 * Redis replication
 * Blue/green deployments
 * Automated failover
 * Infrastructure as Code recovery
+
+Any future automation of restore testing must remain isolated from the production database and production volume.
 
 ---
 
