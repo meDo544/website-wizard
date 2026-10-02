@@ -1,6 +1,8 @@
 import pytest
 
 from backend.services.generation_evaluator import (
+    _evaluate_content_quality,
+    _evaluate_structural_completeness,
     evaluate_generation,
 )
 
@@ -14,8 +16,8 @@ def test_generation_evaluation_contract():
         "primary_goal": "lead_generation",
         "section_order": ["hero", "products", "trust", "cta"],
         "conversion_strategy": {"type": "ecommerce"},
-        "industry_components": {"components": ["products", "trust"]},
-        "active_components": ["products", "trust"],
+        "industry_components": ["products", "shipping", "payments", "returns"],
+        "active_components": {"products": True, "shipping": True, "payments": True, "returns": True},
         "conversion_score": 125,
         "quality_score": 88,
         "conversion_score_breakdown": {"hero": 10, "cta": 10},
@@ -54,7 +56,7 @@ def test_generation_evaluation_normalizes_legacy_scores():
     result = evaluate_generation(profile)
 
     assert result["dimensions"]["conversion_readiness"] == 100
-    assert result["dimensions"]["content_quality"] == 100
+    assert result["dimensions"]["content_quality"] == 33
 
 
 @pytest.mark.unit
@@ -67,7 +69,7 @@ def test_generation_evaluation_is_bounded_for_out_of_range_scores():
     result = evaluate_generation(profile)
 
     assert result["dimensions"]["conversion_readiness"] == 100
-    assert result["dimensions"]["content_quality"] == 100
+    assert result["dimensions"]["content_quality"] == 33
     assert 0 <= result["score"] <= 100
 
 
@@ -78,9 +80,24 @@ def test_generation_evaluation_passes_strong_profile():
         "template_name": "modern",
         "layout_type": "general",
         "primary_goal": "lead_generation",
-        "section_order": ["hero", "products", "trust", "cta"],
-        "industry_components": {"components": ["products"]},
-        "active_components": ["products"],
+        "section_order": ["services", "features", "testimonials", "faqs", "contact", "cta"],
+        "services": ["Web Design", "SEO"],
+        "features": ["Fast", "Secure"],
+        "testimonials": [
+            {"name": "A", "quote": "Excellent"},
+            {"name": "B", "quote": "Reliable"},
+        ],
+        "faqs": [
+            {"question": "How?", "answer": "Simply."},
+            {"question": "When?", "answer": "Today."},
+        ],
+        "contact": {
+            "email": "hello@example.com",
+            "phone": "555-0100",
+        },
+        "cta": "Get Started",
+        "industry_components": [],
+        "active_components": {},
         "conversion_score": 125,
         "quality_score": 88,
     }
@@ -106,7 +123,7 @@ def test_generation_evaluation_improves_partial_profile():
 
     result = evaluate_generation(profile)
 
-    assert result["score"] == 75
+    assert result["score"] == 58
     assert result["decision"] == "improve"
     assert result["requires_improvement"] is True
     assert "structural_completeness" in result["improvement_targets"]
@@ -209,3 +226,107 @@ def test_generation_evaluation_is_attached_by_real_pipeline():
         "content_quality",
         "business_alignment",
     }
+
+
+@pytest.mark.unit
+def test_structural_completeness_scores_complete_profile():
+    profile = {
+        "section_order": ["services", "features", "testimonials", "faqs", "contact", "cta"],
+        "services": ["Web Design"],
+        "features": ["Fast Delivery"],
+        "testimonials": [{"name": "Customer", "quote": "Excellent service"}],
+        "faqs": [{"question": "How?", "answer": "We make it simple."}],
+        "contact": {"email": "hello@example.com"},
+        "cta": "Get Started",
+        "industry_components": [],
+        "active_components": {},
+    }
+
+    assert _evaluate_structural_completeness(profile) == 100
+
+
+@pytest.mark.unit
+def test_structural_completeness_detects_missing_section_content():
+    profile = {
+        "section_order": ["services", "features", "testimonials", "faqs", "contact", "cta"],
+        "services": ["Web Design"],
+        "features": [],
+        "testimonials": [],
+        "faqs": [],
+        "contact": {},
+        "cta": "",
+        "industry_components": [],
+        "active_components": {},
+    }
+
+    assert _evaluate_structural_completeness(profile) == 72
+
+
+@pytest.mark.unit
+def test_structural_completeness_detects_incoherent_components():
+    profile = {
+        "section_order": ["products", "shipping", "payments", "returns", "cta"],
+        "products": [{"name": "Product", "description": "Useful product"}],
+        "shipping": {"headline": "Shipping", "description": "Fast delivery"},
+        "payments": {"headline": "Payments", "description": "Secure checkout"},
+        "returns": {"headline": "Returns", "description": "Easy returns"},
+        "cta": "Shop Now",
+        "industry_components": ["products", "shipping", "payments", "returns"],
+        "active_components": {"products": True, "shipping": True},
+    }
+
+    assert _evaluate_structural_completeness(profile) == 67
+
+
+@pytest.mark.unit
+def test_content_quality_scores_complete_deep_content():
+    profile = {
+        "services": ["Web Design", "SEO"],
+        "features": ["Fast", "Secure"],
+        "testimonials": [
+            {"name": "A", "quote": "Excellent"},
+            {"name": "B", "quote": "Reliable"},
+        ],
+        "faqs": [
+            {"question": "How?", "answer": "Simply."},
+            {"question": "When?", "answer": "Today."},
+        ],
+        "contact": {
+            "email": "hello@example.com",
+            "phone": "555-0100",
+        },
+        "cta": "Get Started",
+        "quality_score": 88,
+    }
+
+    assert _evaluate_content_quality(profile) == 100
+
+
+@pytest.mark.unit
+def test_content_quality_detects_shallow_content():
+    profile = {
+        "services": ["Web Design"],
+        "features": ["Fast"],
+        "testimonials": [
+            {"name": "A", "quote": "Excellent"},
+        ],
+        "faqs": [
+            {"question": "How?", "answer": "Simply."},
+        ],
+        "contact": {
+            "email": "hello@example.com",
+        },
+        "cta": "Get Started",
+        "quality_score": 88,
+    }
+
+    assert _evaluate_content_quality(profile) == 72
+
+
+@pytest.mark.unit
+def test_content_quality_does_not_rely_only_on_legacy_score():
+    profile = {
+        "quality_score": 88,
+    }
+
+    assert _evaluate_content_quality(profile) == 33
