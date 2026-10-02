@@ -72,6 +72,9 @@ from backend.services.industry_conversion_service import (
 from backend.services.industry_component_service import (
     apply_industry_components,
 )
+from backend.services.generation_evaluator import (
+    evaluate_generation,
+)
 from backend.services.scoring_calculator import (
     calculate_conversion_score,
     calculate_quality_score,
@@ -522,6 +525,12 @@ def run_website_intelligence_pipeline(
     apply_industry_components(
         profile,
         state,
+    )
+
+    profile[
+        "generation_evaluation"
+    ] = evaluate_generation(
+        profile
     )
 
     return profile
