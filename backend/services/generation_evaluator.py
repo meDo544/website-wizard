@@ -4,6 +4,22 @@ from backend.services.scoring_calculator import (
     CONVERSION_SCORE_WEIGHTS,
     QUALITY_SCORE_WEIGHTS,
 )
+from backend.services.business_goal_selector import (
+    GOAL_BY_INDUSTRY,
+    infer_primary_goal,
+)
+from backend.services.business_profile_selector import (
+    INDUSTRY_TEMPLATE_MAP,
+    VALID_LAYOUT_TYPES,
+    VALID_TEMPLATE_NAMES,
+)
+from backend.services.industry_component_selector import (
+    get_active_components,
+    get_industry_components,
+)
+from backend.services.industry_conversion_selector import (
+    select_industry_conversion_variant,
+)
 
 
 EVALUATION_VERSION = "v1"
@@ -186,6 +202,128 @@ def _evaluate_content_quality(
         ) / 3
     )
 
+def _evaluate_business_alignment(
+    profile: dict[str, Any],
+) -> int:
+    industry = str(
+        profile.get(
+            "industry",
+            "",
+        )
+    ).strip().lower()
+
+    template_name = str(
+        profile.get(
+            "template_name",
+            "",
+        )
+    ).strip().lower()
+
+    layout_type = str(
+        profile.get(
+            "layout_type",
+            "",
+        )
+    ).strip().lower()
+
+    primary_goal = str(
+        profile.get(
+            "primary_goal",
+            "",
+        )
+    ).strip().lower()
+
+    valid_industries = set(
+        INDUSTRY_TEMPLATE_MAP.keys()
+    )
+
+    valid_primary_goals = set(
+        GOAL_BY_INDUSTRY.values()
+    )
+    valid_primary_goals.add(
+        "lead_generation"
+    )
+
+    classification_valid = (
+        industry in valid_industries
+        and template_name in VALID_TEMPLATE_NAMES
+        and layout_type in VALID_LAYOUT_TYPES
+        and primary_goal in valid_primary_goals
+    )
+
+    expected_goal = infer_primary_goal(
+        profile
+    )
+
+    goal_consistent = (
+        primary_goal == expected_goal
+    )
+
+    expected_components = (
+        get_industry_components(
+            profile
+        )
+    )
+    expected_active_components = (
+        get_active_components(
+            profile
+        )
+    )
+
+    components_consistent = (
+        profile.get(
+            "industry_components"
+        )
+        == expected_components
+        and profile.get(
+            "active_components"
+        )
+        == expected_active_components
+    )
+
+    expected_conversion = (
+        select_industry_conversion_variant(
+            industry_conversion_variants=profile.get(
+                "industry_conversion_variants",
+                [],
+            ),
+            conversion_strategy=profile.get(
+                "conversion_strategy",
+                "general",
+            ),
+        )
+    )
+
+    conversion_consistent = (
+        profile.get(
+            "selected_industry_conversion_type"
+        )
+        == expected_conversion.get(
+            "type"
+        )
+    )
+
+    industry_intelligence_consistent = (
+        components_consistent
+        and conversion_consistent
+    )
+
+    signals = (
+        classification_valid,
+        goal_consistent,
+        industry_intelligence_consistent,
+    )
+
+    return round(
+        sum(
+            100
+            for signal in signals
+            if signal
+        )
+        / len(signals)
+    )
+
+
 def evaluate_generation(
     profile: dict[str, Any],
 ) -> dict[str, Any]:
@@ -205,14 +343,8 @@ def evaluate_generation(
         "content_quality": _evaluate_content_quality(
             profile
         ),
-        "business_alignment": _presence_score(
-            profile,
-            (
-                "industry",
-                "template_name",
-                "layout_type",
-                "primary_goal",
-            ),
+        "business_alignment": _evaluate_business_alignment(
+            profile
         ),
     }
 

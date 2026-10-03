@@ -1,10 +1,153 @@
 import pytest
 
 from backend.services.generation_evaluator import (
+    _evaluate_business_alignment,
     _evaluate_content_quality,
     _evaluate_structural_completeness,
     evaluate_generation,
 )
+
+
+@pytest.mark.unit
+def test_business_alignment_scores_fully_aligned_ecommerce_profile():
+    profile = {
+        "industry": "ecommerce",
+        "template_name": "modern",
+        "layout_type": "catalog",
+        "primary_goal": "online_sales",
+        "conversion_strategy": "ecommerce",
+        "website_identity": {
+            "business_type": "Ecommerce Store",
+        },
+        "industry_components": [
+            "products",
+            "shipping",
+            "payments",
+            "returns",
+        ],
+        "active_components": {
+            "products": True,
+            "shipping": True,
+            "payments": True,
+            "returns": True,
+        },
+        "industry_conversion_variants": [
+            {
+                "type": "ecommerce",
+                "headline": "Built for Online Stores",
+            },
+        ],
+        "selected_industry_conversion_type": "ecommerce",
+    }
+
+    assert _evaluate_business_alignment(profile) == 100
+
+
+@pytest.mark.unit
+def test_business_alignment_accepts_valid_explicit_template_and_layout():
+    profile = {
+        "industry": "ecommerce",
+        "template_name": "classic",
+        "layout_type": "authority",
+        "primary_goal": "online_sales",
+        "conversion_strategy": "ecommerce",
+        "website_identity": {
+            "business_type": "Ecommerce Store",
+        },
+        "industry_components": [
+            "products",
+            "shipping",
+            "payments",
+            "returns",
+        ],
+        "active_components": {
+            "products": True,
+            "shipping": True,
+            "payments": True,
+            "returns": True,
+        },
+        "industry_conversion_variants": [
+            {
+                "type": "ecommerce",
+                "headline": "Built for Online Stores",
+            },
+        ],
+        "selected_industry_conversion_type": "ecommerce",
+    }
+
+    assert _evaluate_business_alignment(profile) == 100
+
+
+@pytest.mark.unit
+def test_business_alignment_penalizes_inconsistent_primary_goal():
+    profile = {
+        "industry": "ecommerce",
+        "template_name": "modern",
+        "layout_type": "catalog",
+        "primary_goal": "lead_generation",
+        "conversion_strategy": "ecommerce",
+        "website_identity": {
+            "business_type": "Ecommerce Store",
+        },
+        "industry_components": [
+            "products",
+            "shipping",
+            "payments",
+            "returns",
+        ],
+        "active_components": {
+            "products": True,
+            "shipping": True,
+            "payments": True,
+            "returns": True,
+        },
+        "industry_conversion_variants": [
+            {
+                "type": "ecommerce",
+                "headline": "Built for Online Stores",
+            },
+        ],
+        "selected_industry_conversion_type": "ecommerce",
+    }
+
+    assert _evaluate_business_alignment(profile) == 67
+
+
+@pytest.mark.unit
+def test_business_alignment_penalizes_misaligned_industry_intelligence():
+    profile = {
+        "industry": "ecommerce",
+        "template_name": "modern",
+        "layout_type": "catalog",
+        "primary_goal": "online_sales",
+        "conversion_strategy": "ecommerce",
+        "website_identity": {
+            "business_type": "Ecommerce Store",
+        },
+        "industry_components": [
+            "menu",
+            "reservations",
+            "hours",
+        ],
+        "active_components": {
+            "menu": True,
+            "reservations": True,
+            "hours": True,
+        },
+        "industry_conversion_variants": [
+            {
+                "type": "restaurant",
+                "headline": "Built for Restaurants",
+            },
+            {
+                "type": "ecommerce",
+                "headline": "Built for Online Stores",
+            },
+        ],
+        "selected_industry_conversion_type": "restaurant",
+    }
+
+    assert _evaluate_business_alignment(profile) == 67
 
 
 @pytest.mark.unit
@@ -79,7 +222,11 @@ def test_generation_evaluation_passes_strong_profile():
         "industry": "ecommerce",
         "template_name": "modern",
         "layout_type": "general",
-        "primary_goal": "lead_generation",
+        "primary_goal": "online_sales",
+        "conversion_strategy": "ecommerce",
+        "website_identity": {
+            "business_type": "Ecommerce Store",
+        },
         "section_order": ["services", "features", "testimonials", "faqs", "contact", "cta"],
         "services": ["Web Design", "SEO"],
         "features": ["Fast", "Secure"],
@@ -96,8 +243,25 @@ def test_generation_evaluation_passes_strong_profile():
             "phone": "555-0100",
         },
         "cta": "Get Started",
-        "industry_components": [],
-        "active_components": {},
+        "industry_components": [
+            "products",
+            "shipping",
+            "payments",
+            "returns",
+        ],
+        "active_components": {
+            "products": True,
+            "shipping": True,
+            "payments": True,
+            "returns": True,
+        },
+        "industry_conversion_variants": [
+            {
+                "type": "ecommerce",
+                "headline": "Built for Online Stores",
+            },
+        ],
+        "selected_industry_conversion_type": "ecommerce",
         "conversion_score": 125,
         "quality_score": 88,
     }
@@ -116,17 +280,43 @@ def test_generation_evaluation_improves_partial_profile():
         "industry": "ecommerce",
         "template_name": "modern",
         "layout_type": "general",
-        "primary_goal": "lead_generation",
+        "primary_goal": "online_sales",
+        "conversion_strategy": "ecommerce",
+        "website_identity": {
+            "business_type": "Ecommerce Store",
+        },
+        "industry_components": [
+            "products",
+            "shipping",
+            "payments",
+            "returns",
+        ],
+        "active_components": {
+            "products": True,
+            "shipping": True,
+            "payments": True,
+            "returns": True,
+        },
+        "industry_conversion_variants": [
+            {
+                "type": "ecommerce",
+                "headline": "Built for Online Stores",
+            },
+        ],
+        "selected_industry_conversion_type": "ecommerce",
         "conversion_score": 125,
         "quality_score": 88,
     }
 
     result = evaluate_generation(profile)
 
-    assert result["score"] == 58
+    assert result["score"] == 66
     assert result["decision"] == "improve"
     assert result["requires_improvement"] is True
-    assert "structural_completeness" in result["improvement_targets"]
+    assert set(result["improvement_targets"]) == {
+        "structural_completeness",
+        "content_quality",
+    }
 
 
 @pytest.mark.unit
@@ -226,6 +416,7 @@ def test_generation_evaluation_is_attached_by_real_pipeline():
         "content_quality",
         "business_alignment",
     }
+    assert evaluation["dimensions"]["business_alignment"] == 100
 
 
 @pytest.mark.unit
