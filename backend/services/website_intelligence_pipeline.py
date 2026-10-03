@@ -78,6 +78,9 @@ from backend.services.generation_evaluator import (
 from backend.services.seo_readiness_evaluator import (
     evaluate_seo_readiness,
 )
+from backend.services.accessibility_readiness_evaluator import (
+    evaluate_accessibility_readiness,
+)
 from backend.services.scoring_calculator import (
     calculate_conversion_score,
     calculate_quality_score,
@@ -539,6 +542,12 @@ def run_website_intelligence_pipeline(
     profile[
         "seo_readiness"
     ] = evaluate_seo_readiness(
+        profile
+    )
+
+    profile[
+        "accessibility_readiness"
+    ] = evaluate_accessibility_readiness(
         profile
     )
 

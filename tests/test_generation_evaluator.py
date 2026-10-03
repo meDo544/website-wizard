@@ -567,6 +567,26 @@ def test_generation_evaluation_is_attached_by_real_pipeline():
     }
     assert seo["improvement_targets"] == []
 
+    accessibility = result["accessibility_readiness"]
+
+    assert accessibility["evaluation_version"] == "v1"
+    assert 0 <= accessibility["score"] <= 100
+    assert set(accessibility["signals"]) == {
+        "content_clarity",
+        "structural_readiness",
+        "interaction_clarity",
+    }
+    assert all(
+        0 <= value <= 100
+        for value in accessibility["signals"].values()
+    )
+    assert isinstance(accessibility["findings"], list)
+    assert isinstance(accessibility["strengths"], list)
+    assert isinstance(
+        accessibility["improvement_targets"],
+        list,
+    )
+
 
 @pytest.mark.unit
 def test_structural_completeness_scores_complete_profile():
