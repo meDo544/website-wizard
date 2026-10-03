@@ -329,7 +329,12 @@ def _has_conversion_text(value: Any) -> bool:
         return False
 
     for field in ("headline", "subheadline", "subtitle", "text"):
-        if str(value.get(field, "")).strip():
+        field_value = value.get(field)
+
+        if (
+            isinstance(field_value, str)
+            and field_value.strip()
+        ):
             return True
 
     return False

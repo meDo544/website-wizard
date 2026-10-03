@@ -5,6 +5,7 @@ from backend.services.generation_evaluator import (
     _evaluate_content_quality,
     _evaluate_conversion_readiness,
     _evaluate_structural_completeness,
+    _has_conversion_text,
     evaluate_generation,
 )
 
@@ -58,6 +59,25 @@ def _complete_conversion_journey() -> dict:
         },
         "selected_urgency_type": "limited_stock",
     }
+
+
+@pytest.mark.unit
+def test_conversion_text_rejects_none_and_non_string_values():
+    assert _has_conversion_text(
+        {
+            "headline": None,
+            "subheadline": 123,
+            "subtitle": False,
+            "text": [],
+        }
+    ) is False
+
+    assert _has_conversion_text(
+        {
+            "headline": "   ",
+            "text": "Shop Now",
+        }
+    ) is True
 
 
 @pytest.mark.unit
