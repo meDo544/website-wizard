@@ -3,9 +3,113 @@ import pytest
 from backend.services.generation_evaluator import (
     _evaluate_business_alignment,
     _evaluate_content_quality,
+    _evaluate_conversion_readiness,
     _evaluate_structural_completeness,
     evaluate_generation,
 )
+
+
+def _complete_conversion_journey() -> dict:
+    return {
+        "selected_hero": {
+            "type": "benefit",
+            "headline": "Build Better",
+            "subheadline": "A clear reason to act.",
+        },
+        "selected_hero_type": "benefit",
+        "selected_value_prop": {
+            "type": "quality",
+            "headline": "Built for Results",
+        },
+        "selected_value_prop_type": "quality",
+        "selected_offer": {
+            "type": "discount",
+            "headline": "Special Offer",
+        },
+        "selected_offer_type": "discount",
+        "selected_trust": {
+            "type": "reviews",
+            "headline": "Trusted by Customers",
+        },
+        "selected_trust_type": "reviews",
+        "selected_social_proof": {
+            "type": "reviews",
+            "headline": "Customers Recommend Us",
+        },
+        "selected_social_proof_type": "reviews",
+        "selected_cta": {
+            "type": "purchase",
+            "text": "Shop Now",
+        },
+        "selected_cta_type": "purchase",
+        "selected_objection": {
+            "type": "convenience",
+            "headline": "Simple and Easy",
+        },
+        "selected_objection_type": "convenience",
+        "selected_risk_reversal": {
+            "type": "guarantee",
+            "headline": "Satisfaction Guaranteed",
+        },
+        "selected_risk_reversal_type": "guarantee",
+        "selected_urgency": {
+            "type": "limited_stock",
+            "headline": "Available Today",
+        },
+        "selected_urgency_type": "limited_stock",
+    }
+
+
+@pytest.mark.unit
+def test_conversion_readiness_scores_complete_coherent_journey():
+    profile = _complete_conversion_journey()
+    profile["conversion_score"] = 125
+
+    assert _evaluate_conversion_readiness(profile) == 100
+
+
+@pytest.mark.unit
+def test_conversion_readiness_penalizes_missing_conversion_content():
+    profile = _complete_conversion_journey()
+    profile["conversion_score"] = 125
+
+    for field in (
+        "selected_hero",
+        "selected_value_prop",
+        "selected_offer",
+        "selected_trust",
+        "selected_social_proof",
+        "selected_cta",
+        "selected_objection",
+        "selected_risk_reversal",
+        "selected_urgency",
+    ):
+        profile[field] = {
+            "type": profile[field]["type"]
+        }
+
+    assert _evaluate_conversion_readiness(profile) == 67
+
+
+@pytest.mark.unit
+def test_conversion_readiness_penalizes_incoherent_selected_types():
+    profile = _complete_conversion_journey()
+    profile["conversion_score"] = 125
+
+    for field in (
+        "selected_hero_type",
+        "selected_value_prop_type",
+        "selected_offer_type",
+        "selected_trust_type",
+        "selected_social_proof_type",
+        "selected_cta_type",
+        "selected_objection_type",
+        "selected_risk_reversal_type",
+        "selected_urgency_type",
+    ):
+        profile[field] = "mismatch"
+
+    assert _evaluate_conversion_readiness(profile) == 67
 
 
 @pytest.mark.unit
@@ -198,7 +302,7 @@ def test_generation_evaluation_normalizes_legacy_scores():
 
     result = evaluate_generation(profile)
 
-    assert result["dimensions"]["conversion_readiness"] == 100
+    assert result["dimensions"]["conversion_readiness"] == 33
     assert result["dimensions"]["content_quality"] == 33
 
 
@@ -211,7 +315,7 @@ def test_generation_evaluation_is_bounded_for_out_of_range_scores():
 
     result = evaluate_generation(profile)
 
-    assert result["dimensions"]["conversion_readiness"] == 100
+    assert result["dimensions"]["conversion_readiness"] == 33
     assert result["dimensions"]["content_quality"] == 33
     assert 0 <= result["score"] <= 100
 
@@ -264,6 +368,7 @@ def test_generation_evaluation_passes_strong_profile():
         "selected_industry_conversion_type": "ecommerce",
         "conversion_score": 125,
         "quality_score": 88,
+        **_complete_conversion_journey(),
     }
 
     result = evaluate_generation(profile)
@@ -306,6 +411,7 @@ def test_generation_evaluation_improves_partial_profile():
         "selected_industry_conversion_type": "ecommerce",
         "conversion_score": 125,
         "quality_score": 88,
+        **_complete_conversion_journey(),
     }
 
     result = evaluate_generation(profile)

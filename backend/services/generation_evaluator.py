@@ -324,21 +324,109 @@ def _evaluate_business_alignment(
     )
 
 
-def evaluate_generation(
+def _has_conversion_text(value: Any) -> bool:
+    if not isinstance(value, dict):
+        return False
+
+    for field in ("headline", "subheadline", "subtitle", "text"):
+        if str(value.get(field, "")).strip():
+            return True
+
+    return False
+
+
+def _evaluate_conversion_readiness(
     profile: dict[str, Any],
-) -> dict[str, Any]:
+) -> int:
     conversion_max = sum(
         CONVERSION_SCORE_WEIGHTS.values()
     )
+
+    legacy_strength = _normalize_score(
+        profile.get("conversion_score", 0),
+        conversion_max,
+    )
+
+    core_objects = (
+        "selected_hero",
+        "selected_value_prop",
+        "selected_offer",
+        "selected_trust",
+        "selected_social_proof",
+        "selected_cta",
+        "selected_objection",
+        "selected_risk_reversal",
+        "selected_urgency",
+    )
+
+    content_integrity = round(
+        sum(
+            100
+            for field in core_objects
+            if _has_conversion_text(
+                profile.get(field)
+            )
+        )
+        / len(core_objects)
+    )
+
+    coherence_pairs = (
+        ("selected_hero", "selected_hero_type"),
+        ("selected_value_prop", "selected_value_prop_type"),
+        ("selected_offer", "selected_offer_type"),
+        ("selected_trust", "selected_trust_type"),
+        ("selected_social_proof", "selected_social_proof_type"),
+        ("selected_cta", "selected_cta_type"),
+        ("selected_objection", "selected_objection_type"),
+        ("selected_risk_reversal", "selected_risk_reversal_type"),
+        ("selected_urgency", "selected_urgency_type"),
+    )
+
+    coherent = 0
+
+    for object_field, type_field in coherence_pairs:
+        selected = profile.get(object_field)
+        selected_type = str(
+            profile.get(type_field, "")
+        ).strip().lower()
+
+        if not isinstance(selected, dict):
+            continue
+
+        object_type = str(
+            selected.get("type", "")
+        ).strip().lower()
+
+        if object_type and object_type == selected_type:
+            coherent += 1
+
+    journey_coherence = round(
+        coherent * 100 / len(coherence_pairs)
+    )
+
+    return round(
+        (
+            legacy_strength
+            + content_integrity
+            + journey_coherence
+        )
+        / 3
+    )
+
+
+def evaluate_generation(
+    profile: dict[str, Any],
+) -> dict[str, Any]:
     dimensions = {
         "structural_completeness": (
             _evaluate_structural_completeness(
                 profile
             )
         ),
-        "conversion_readiness": _normalize_score(
-            profile.get("conversion_score", 0),
-            conversion_max,
+        "conversion_readiness": (
+            _evaluate_conversion_readiness(
+                profile
+            )
         ),
         "content_quality": _evaluate_content_quality(
             profile
