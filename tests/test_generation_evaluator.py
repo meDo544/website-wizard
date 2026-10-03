@@ -446,6 +446,16 @@ def test_generation_evaluation_is_attached_by_real_pipeline():
     )
 
     profile = {
+        "seo_title": "Fresh Handcrafted Pizza and Local Delivery",
+        "seo_description": "Order handcrafted pizza made with fresh ingredients for convenient local delivery.",
+        "services": [
+            "Pizza Delivery",
+            "Online Ordering",
+        ],
+        "features": [
+            "Fresh Ingredients",
+            "Local Delivery",
+        ],
         "website_identity": {
             "business_name": "Test Pizza",
             "business_type": "Pizza Restaurant",
@@ -523,6 +533,19 @@ def test_generation_evaluation_is_attached_by_real_pipeline():
         "business_alignment",
     }
     assert evaluation["dimensions"]["business_alignment"] == 100
+
+    seo = result["seo_readiness"]
+
+    assert result["seo_title"] == profile["seo_title"]
+    assert result["seo_description"] == profile["seo_description"]
+    assert seo["evaluation_version"] == "v1"
+    assert seo["score"] == 100
+    assert seo["signals"] == {
+        "metadata_presence": 100,
+        "metadata_quality": 100,
+        "content_discoverability": 100,
+    }
+    assert seo["improvement_targets"] == []
 
 
 @pytest.mark.unit

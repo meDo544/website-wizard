@@ -75,6 +75,9 @@ from backend.services.industry_component_service import (
 from backend.services.generation_evaluator import (
     evaluate_generation,
 )
+from backend.services.seo_readiness_evaluator import (
+    evaluate_seo_readiness,
+)
 from backend.services.scoring_calculator import (
     calculate_conversion_score,
     calculate_quality_score,
@@ -530,6 +533,12 @@ def run_website_intelligence_pipeline(
     profile[
         "generation_evaluation"
     ] = evaluate_generation(
+        profile
+    )
+
+    profile[
+        "seo_readiness"
+    ] = evaluate_seo_readiness(
         profile
     )
 
