@@ -84,6 +84,9 @@ from backend.services.accessibility_readiness_evaluator import (
 from backend.services.generation_improvement import (
     build_generation_improvement,
 )
+from backend.services.generation_quality_gate import (
+    evaluate_generation_quality_gate,
+)
 from backend.services.scoring_calculator import (
     calculate_conversion_score,
     calculate_quality_score,
@@ -557,6 +560,12 @@ def run_website_intelligence_pipeline(
     profile[
         "generation_improvement"
     ] = build_generation_improvement(
+        profile
+    )
+
+    profile[
+        "generation_quality_gate"
+    ] = evaluate_generation_quality_gate(
         profile
     )
 
