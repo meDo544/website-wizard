@@ -8,7 +8,9 @@ from typing import Any
 import structlog
 
 from backend.core.metrics import (
+    record_generation_intelligence,
     record_gpt_tokens,
+    track_generation_intelligence_duration,
     track_gpt_duration,
 )
 
@@ -87,8 +89,57 @@ def generate_business_profile(
             )
 
 
-            profile = run_website_intelligence_pipeline(
-                profile
+            with track_generation_intelligence_duration():
+                profile = run_website_intelligence_pipeline(
+                    profile
+                )
+
+            generation_evaluation = profile.get(
+                "generation_evaluation",
+                {},
+            )
+            seo_readiness = profile.get(
+                "seo_readiness",
+                {},
+            )
+            accessibility_readiness = profile.get(
+                "accessibility_readiness",
+                {},
+            )
+            generation_improvement = profile.get(
+                "generation_improvement",
+                {},
+            )
+            generation_quality_gate = profile.get(
+                "generation_quality_gate",
+                {},
+            )
+
+            record_generation_intelligence(
+                gate_decision=generation_quality_gate.get(
+                    "decision",
+                    "fail",
+                ),
+                generation_score=generation_evaluation.get(
+                    "score",
+                    0,
+                ),
+                seo_score=seo_readiness.get(
+                    "score",
+                    0,
+                ),
+                accessibility_score=accessibility_readiness.get(
+                    "score",
+                    0,
+                ),
+                improvement_attempted=generation_improvement.get(
+                    "attempted",
+                    False,
+                ),
+                improvement_improved=generation_improvement.get(
+                    "improved",
+                    False,
+                ),
             )
 
             metrics["status"] = "success"

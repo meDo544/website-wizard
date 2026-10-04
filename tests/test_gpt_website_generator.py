@@ -117,6 +117,18 @@ def test_generate_business_profile_composition_contract(
         result["normalized"] = True
         return result
 
+    @contextmanager
+    def fake_track_generation_intelligence_duration():
+        events.append(
+            ("intelligence_duration_start",)
+        )
+
+        yield
+
+        events.append(
+            ("intelligence_duration_end",)
+        )
+
     def fake_intelligence(profile):
         events.append(
             (
@@ -127,7 +139,31 @@ def test_generate_business_profile_composition_contract(
 
         result = dict(profile)
         result["intelligence"] = True
+        result["generation_evaluation"] = {
+            "score": 88,
+        }
+        result["seo_readiness"] = {
+            "score": 91,
+        }
+        result["accessibility_readiness"] = {
+            "score": 84,
+        }
+        result["generation_improvement"] = {
+            "attempted": True,
+            "improved": True,
+        }
+        result["generation_quality_gate"] = {
+            "decision": "pass",
+        }
         return result
+
+    def fake_record_generation_intelligence(**kwargs):
+        events.append(
+            (
+                "generation_metrics",
+                dict(kwargs),
+            )
+        )
 
     def fake_telemetry(
         *,
@@ -178,8 +214,18 @@ def test_generate_business_profile_composition_contract(
     )
     monkeypatch.setattr(
         generator,
+        "track_generation_intelligence_duration",
+        fake_track_generation_intelligence_duration,
+    )
+    monkeypatch.setattr(
+        generator,
         "run_website_intelligence_pipeline",
         fake_intelligence,
+    )
+    monkeypatch.setattr(
+        generator,
+        "record_generation_intelligence",
+        fake_record_generation_intelligence,
     )
     monkeypatch.setattr(
         generator,
@@ -197,6 +243,22 @@ def test_generate_business_profile_composition_contract(
         "business_name": "Test Pizza",
         "normalized": True,
         "intelligence": True,
+        "generation_evaluation": {
+            "score": 88,
+        },
+        "seo_readiness": {
+            "score": 91,
+        },
+        "accessibility_readiness": {
+            "score": 84,
+        },
+        "generation_improvement": {
+            "attempted": True,
+            "improved": True,
+        },
+        "generation_quality_gate": {
+            "decision": "pass",
+        },
         "_usage": {
             "prompt_tokens": 10,
             "completion_tokens": 20,
@@ -217,7 +279,10 @@ def test_generate_business_profile_composition_contract(
         "llm",
         "tokens",
         "normalize",
+        "intelligence_duration_start",
         "intelligence",
+        "intelligence_duration_end",
+        "generation_metrics",
         "telemetry",
         "duration_end",
     ]
@@ -241,12 +306,40 @@ def test_generate_business_profile_composition_contract(
 
     # Telemetry receives the intelligence-enriched profile
     # before generation metadata is attached.
-    telemetry_profile = events[7][4]
+    assert events[9] == (
+        "generation_metrics",
+        {
+            "gate_decision": "pass",
+            "generation_score": 88,
+            "seo_score": 91,
+            "accessibility_score": 84,
+            "improvement_attempted": True,
+            "improvement_improved": True,
+        },
+    )
+
+    telemetry_profile = events[10][4]
 
     assert telemetry_profile == {
         "business_name": "Test Pizza",
         "normalized": True,
         "intelligence": True,
+        "generation_evaluation": {
+            "score": 88,
+        },
+        "seo_readiness": {
+            "score": 91,
+        },
+        "accessibility_readiness": {
+            "score": 84,
+        },
+        "generation_improvement": {
+            "attempted": True,
+            "improved": True,
+        },
+        "generation_quality_gate": {
+            "decision": "pass",
+        },
     }
 
     assert "_usage" not in telemetry_profile

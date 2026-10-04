@@ -100,6 +100,33 @@ CELERY_TASK_DURATION_BUCKETS = (
 )
 
 
+GENERATION_READINESS_BUCKETS = (
+    0.0,
+    20.0,
+    40.0,
+    50.0,
+    60.0,
+    70.0,
+    80.0,
+    90.0,
+    100.0,
+)
+
+GENERATION_INTELLIGENCE_DURATION_BUCKETS = (
+    0.001,
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+)
+
+
 # ---------------------------------------------------------------------------
 # HTTP metrics
 # ---------------------------------------------------------------------------
@@ -257,6 +284,36 @@ CELERY_TASK_RETRIES_TOTAL = Counter(
     "website_wizard_celery_task_retries_total",
     "Celery task retry attempts.",
     ["task_name", "reason"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Generation intelligence metrics
+# ---------------------------------------------------------------------------
+
+GENERATION_QUALITY_GATE_TOTAL = Counter(
+    "website_wizard_generation_quality_gate_total",
+    "Final generation quality gate decisions.",
+    ["decision"],
+)
+
+GENERATION_READINESS_SCORE = Histogram(
+    "website_wizard_generation_readiness_score",
+    "Final generation readiness score by bounded dimension.",
+    ["dimension"],
+    buckets=GENERATION_READINESS_BUCKETS,
+)
+
+GENERATION_IMPROVEMENT_TOTAL = Counter(
+    "website_wizard_generation_improvement_total",
+    "Generation improvement outcomes.",
+    ["attempted", "improved"],
+)
+
+GENERATION_INTELLIGENCE_DURATION_SECONDS = Histogram(
+    "website_wizard_generation_intelligence_duration_seconds",
+    "Website intelligence pipeline duration in seconds.",
+    buckets=GENERATION_INTELLIGENCE_DURATION_BUCKETS,
 )
 
 # ---------------------------------------------------------------------------
@@ -517,6 +574,75 @@ def record_gpt_tokens(
             token_type="total",
             user_id=user_id,
         ).inc(total_tokens)
+
+
+def record_generation_intelligence(
+    *,
+    gate_decision: str,
+    generation_score: int,
+    seo_score: int,
+    accessibility_score: int,
+    improvement_attempted: bool,
+    improvement_improved: bool,
+) -> None:
+    """Record final bounded generation-intelligence outcomes."""
+
+    decision = (
+        gate_decision
+        if gate_decision in {"pass", "review", "fail"}
+        else "fail"
+    )
+
+    GENERATION_QUALITY_GATE_TOTAL.labels(
+        decision=decision,
+    ).inc()
+
+    scores = {
+        "generation": generation_score,
+        "seo": seo_score,
+        "accessibility": accessibility_score,
+    }
+
+    for dimension, score in scores.items():
+        try:
+            value = float(score)
+        except (TypeError, ValueError):
+            value = 0.0
+
+        value = max(0.0, min(100.0, value))
+
+        GENERATION_READINESS_SCORE.labels(
+            dimension=dimension,
+        ).observe(value)
+
+    attempted = (
+        "true"
+        if improvement_attempted is True
+        else "false"
+    )
+    improved = (
+        "true"
+        if improvement_improved is True
+        else "false"
+    )
+
+    GENERATION_IMPROVEMENT_TOTAL.labels(
+        attempted=attempted,
+        improved=improved,
+    ).inc()
+
+
+@contextmanager
+def track_generation_intelligence_duration() -> Generator[None, None, None]:
+    """Track website intelligence pipeline duration."""
+    start_time = time.perf_counter()
+
+    try:
+        yield
+    finally:
+        GENERATION_INTELLIGENCE_DURATION_SECONDS.observe(
+            time.perf_counter() - start_time
+        )
 
 
 def record_gpt_cost(
