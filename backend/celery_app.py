@@ -83,3 +83,4 @@ celery_app.autodiscover_tasks(
 # -------------------------------------------------------------------
 
 import backend.tasks.website_generation
+import backend.tasks.celery_metrics  # noqa: F401

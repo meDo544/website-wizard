@@ -25,9 +25,7 @@ from backend.core.metrics import (
     record_audit_failure,
     record_audit_retry,
     record_audit_stage,
-    record_celery_retry,
     track_audit_duration,
-    track_celery_task,
 )
 from backend.services.gpt_analyzer import analyze_with_gpt
 from backend.services.lighthouse_runner import run_lighthouse_audit
@@ -77,15 +75,10 @@ def run_full_audit(
         retry_count=self.request.retries,
     )
 
-    with track_celery_task(task_name=task_name) as celery_metrics:
-        with track_audit_duration() as audit_metrics:
+    with track_audit_duration() as audit_metrics:
             try:
                 if self.request.retries:
                     record_audit_retry(reason="celery_retry")
-                    record_celery_retry(
-                        task_name=task_name,
-                        reason="celery_retry",
-                    )
 
                 _record_stage("started", audit_id=audit_id)
 
@@ -102,7 +95,6 @@ def run_full_audit(
                 _record_stage("completed", audit_id=audit_id)
 
                 audit_metrics["status"] = "completed"
-                celery_metrics["status"] = "success"
 
                 logger.info(
                     "Full audit task completed",
@@ -123,10 +115,8 @@ def run_full_audit(
                 _record_stage("retrying", audit_id=audit_id)
 
                 record_audit_retry(reason="timeout")
-                record_celery_retry(task_name=task_name, reason="timeout")
 
                 audit_metrics["status"] = "retrying"
-                celery_metrics["status"] = "retrying"
 
                 logger.exception(
                     "Full audit task timed out and may retry",
@@ -145,7 +135,6 @@ def run_full_audit(
                 record_audit_failure(failure_type=failure_type)
 
                 audit_metrics["status"] = "failed"
-                celery_metrics["status"] = "failure"
 
                 logger.exception(
                     "Full audit task failed",

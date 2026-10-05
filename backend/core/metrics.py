@@ -23,7 +23,9 @@ from prometheus_client import (
     Counter,
     Gauge,
     Histogram,
+    CollectorRegistry,
     generate_latest,
+    multiprocess,
 )
 from starlette.responses import Response
 
@@ -148,6 +150,7 @@ HTTP_REQUESTS_IN_PROGRESS = Gauge(
     "website_wizard_http_requests_in_progress",
     "Currently active HTTP requests.",
     ["method", "route"],
+    multiprocess_mode="livesum",
 )
 
 HTTP_EXCEPTIONS_TOTAL = Counter(
@@ -177,6 +180,7 @@ AUDIT_DURATION_SECONDS = Histogram(
 AUDITS_IN_PROGRESS = Gauge(
     "website_wizard_audits_in_progress",
     "Currently active audits.",
+    multiprocess_mode="livesum",
 )
 
 AUDIT_STAGE_TRANSITIONS_TOTAL = Counter(
@@ -219,6 +223,7 @@ GPT_REQUESTS_IN_PROGRESS = Gauge(
     "website_wizard_gpt_requests_in_progress",
     "Currently active GPT requests.",
     ["model", "user_id"],
+    multiprocess_mode="livesum",
 )
 
 GPT_TOKENS_TOTAL = Counter(
@@ -254,6 +259,7 @@ LIGHTHOUSE_DURATION_SECONDS = Histogram(
 LIGHTHOUSE_RUNS_IN_PROGRESS = Gauge(
     "website_wizard_lighthouse_runs_in_progress",
     "Currently active Lighthouse runs.",
+    multiprocess_mode="livesum",
 )
 
 
@@ -278,6 +284,7 @@ CELERY_TASKS_IN_PROGRESS = Gauge(
     "website_wizard_celery_tasks_in_progress",
     "Currently active Celery tasks.",
     ["task_name"],
+    multiprocess_mode="livesum",
 )
 
 CELERY_TASK_RETRIES_TOTAL = Counter(
@@ -327,8 +334,11 @@ def metrics_response() -> Response:
     Intended usage:
         app.add_route("/metrics", metrics_response)
     """
+    registry = CollectorRegistry()
+    multiprocess.MultiProcessCollector(registry)
+
     return Response(
-        content=generate_latest(),
+        content=generate_latest(registry),
         media_type=CONTENT_TYPE_LATEST,
     )
 

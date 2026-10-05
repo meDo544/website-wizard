@@ -19,16 +19,19 @@ Example:
 
 from __future__ import annotations
 
+import os
 import time
 from typing import Dict
 
 import structlog
+from prometheus_client import multiprocess
 from celery.signals import (
     task_failure,
     task_postrun,
     task_prerun,
     task_retry,
     task_success,
+    worker_process_shutdown,
 )
 
 from backend.core.metrics import (
@@ -207,3 +210,13 @@ def celery_task_retry(
         task_name=task_name,
         reason=reason_label,
     )
+
+
+@worker_process_shutdown.connect
+def celery_worker_process_shutdown(
+    pid=None,
+    **kwargs,
+):
+    """Remove live-gauge files for a stopped Celery worker child."""
+    worker_pid = pid or os.getpid()
+    multiprocess.mark_process_dead(worker_pid)
