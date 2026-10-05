@@ -156,3 +156,8 @@ transport:
 
 # Local Docker credentials
 .env.docker
+
+# Website publication runtime state
+.generated_sites_locks/
+.generated_sites_staging/
+.generated_sites_backup/

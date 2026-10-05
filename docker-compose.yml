@@ -25,7 +25,6 @@ services:
       - prometheus
     volumes:
       - ./:/app
-      - ./generated_sites:/app/generated_sites
     networks:
       - website-wizard-network
 
@@ -54,7 +53,6 @@ services:
       - postgres
     volumes:
       - ./:/app
-      - ./generated_sites:/app/generated_sites
     networks:
       - website-wizard-network
 
