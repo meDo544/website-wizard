@@ -12,6 +12,52 @@ MAJOR.MINOR.PATCH
 
 ---
 
+# [v1.1.0] — Unreleased
+
+**Development Status:** In Progress
+
+## Phase 1 — Generation Intelligence & Self-Evaluation
+
+### Added
+
+* Added a structured generation evaluation framework with deterministic scoring and pass/improve/fail decisions.
+* Added content and structural quality evaluation.
+* Added business and industry alignment evaluation.
+* Added conversion-readiness evaluation and hardened conversion-text validation.
+* Added SEO readiness evaluation.
+* Added accessibility readiness evaluation without representing the result as WCAG compliance.
+* Added a bounded autonomous improvement loop with deterministic one-pass correction and reevaluation.
+* Added a generation quality gate with pass, review, and fail decisions and explicit release-readiness metadata.
+* Added generation-intelligence Prometheus metrics for quality-gate decisions, readiness scores, improvement outcomes, and pipeline duration.
+* Added process-safe Prometheus multiprocess aggregation across the FastAPI backend and Celery workers.
+* Added persistence of generation evaluation, SEO readiness, accessibility readiness, improvement, and quality-gate metadata within the generated website profile.
+
+### Changed
+
+* Improved atomic generated-site publication by removing the redundant nested generated-sites bind mount that crossed a filesystem mount boundary.
+* Added shared Prometheus multiprocess storage for backend and Celery metric aggregation.
+* Enabled centralized Celery lifecycle metric instrumentation and worker-process cleanup for live gauges.
+
+### Validation
+
+* Generation Intelligence & Self-Evaluation Phase 1 completed production validation.
+* Production generation completed successfully through the authenticated API and Celery worker path.
+* Persisted production readiness scores were Generation 94, SEO 83, and Accessibility 100.
+* Production quality gate returned pass with release_ready=true and no blocking dimensions.
+* Generated intelligence metadata persisted successfully in PostgreSQL under metadata_json.profile.
+* Generated website publication completed atomically with no staging residue.
+* Published website returned HTTP 200 and matched the persisted generated artifact.
+* Prometheus successfully observed Celery-generated intelligence metrics through the backend scrape endpoint.
+* Backend and Celery remained healthy after production validation.
+
+### Impact
+
+Website Wizard can now evaluate each generated website, identify improvement opportunities, apply bounded deterministic corrections when required, make an explicit quality-gate decision, persist the intelligence results, and expose production metrics for the complete evaluation path.
+
+Phase 1 establishes the measurable self-evaluation foundation required for subsequent autonomous website-building capabilities.
+
+---
+
 # [v1.0.4] — CI/CD Automation
 
 **Release Date:** June 2026
