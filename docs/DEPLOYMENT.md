@@ -126,6 +126,30 @@ Do **not** commit the `.env` file to version control.
 
 ---
 
+## External Docker Network Prerequisite
+
+Production Compose requires an existing Docker bridge network:
+
+    website-wizard_website-wizard-network
+
+Create it before the first deployment:
+
+    docker network create --driver bridge --subnet 172.18.0.0/16 website-wizard_website-wizard-network
+
+First check whether the network already exists using docker network inspect.
+Do not recreate or remove an existing production network.
+
+Grafana uses the fixed container IP 172.18.0.50.
+Verify that this IP is available and the subnet does not conflict
+with existing host, VPN, or Docker networks.
+
+SECURITY: Docker Compose does not install the host firewall controls
+that block Grafana access to the GCP instance metadata endpoint.
+Provision and verify those controls separately before deployment.
+Do not change the subnet or Grafana IP without updating the firewall.
+
+---
+
 # Docker Services
 
 Website Wizard consists of the following services:

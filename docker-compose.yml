@@ -36,13 +36,18 @@ services:
   # ---------------------------------------------------------------------------
 
   celery:
+    init: true
     build:
       context: .
       dockerfile: Dockerfile
     container_name: website-wizard-celery
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "celery -A backend.celery_app.celery_app inspect ping --timeout=10 2>/dev/null | grep -q pong"]
+      test:
+        - CMD
+        - python
+        - -c
+        - 'from pathlib import Path; ids=Path("/proc/1/task/1/children").read_text().split(); assert any(Path("/proc",i,"comm").read_text().strip()=="celery" and Path("/proc",i,"status").read_text().split("State:",1)[1].split()[0] in ("R","S","D") for i in ids)'
       interval: 30s
       timeout: 15s
       start_period: 30s
@@ -169,7 +174,8 @@ services:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
     networks:
-      - website-wizard-network
+      website-wizard-network:
+        ipv4_address: 172.18.0.50
 
 # ---------------------------------------------------------------------------
 # Networks
@@ -177,7 +183,8 @@ services:
 
 networks:
   website-wizard-network:
-    driver: bridge
+    external: true
+    name: website-wizard_website-wizard-network
 
 # ---------------------------------------------------------------------------
 # Volumes
