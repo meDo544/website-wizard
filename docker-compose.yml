@@ -158,7 +158,7 @@ services:
   # ---------------------------------------------------------------------------
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana@sha256:2d1f9ae67c1778d33e291d4c3c759cd8b650e67491f02533499eb950e075eeb5
     container_name: website-wizard-grafana
     restart: unless-stopped
     ports:
