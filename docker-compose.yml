@@ -136,7 +136,7 @@ services:
   # ---------------------------------------------------------------------------
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus@sha256:e4254400b85610324913f0dc4acf92603d9984e7519414c5a12811aa6146acc3
     container_name: website-wizard-prometheus
     restart: unless-stopped
     ports:
